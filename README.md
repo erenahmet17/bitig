@@ -2,7 +2,11 @@
 
 Farklı yapay zekâ sohbetlerinden çıkan soru-cevapları ders ve bölüm bazında tek yerde toplayan web uygulaması.
 
-## Çalıştırma
+**Canlı adres:** https://ders-defteri-eren-2611.vercel.app
+Chrome veya Edge'de açıp adres çubuğundaki yükle simgesiyle (ya da uygulamadaki "⤓ Yükle" butonuyla) bilgisayara kurulabilir.
+`main` dalına gönderilen her değişiklik Vercel'de otomatik yayınlanır.
+
+## Yerelde çalıştırma (geliştirme)
 
 `baslat.bat` dosyasına çift tıkla. Ya da terminalde şunu çalıştır:
 

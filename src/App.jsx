@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { BookOpen, FolderTree, ClipboardPaste, Menu, Plus } from 'lucide-react';
 import { db, ROOT } from './db.js';
 import Sidebar from './Sidebar.jsx';
 import SectionView from './SectionView.jsx';
+import { UIHost } from './ui.jsx';
 
 function usePersistentState(key, initial) {
   const [value, setValue] = useState(() => {
@@ -23,10 +25,13 @@ function usePersistentState(key, initial) {
 
 export default function App() {
   const sections = useLiveQuery(() => db.sections.toArray(), []);
+  // Her bölümdeki soru sayısı (sadece indeks okunur, hızlıdır)
+  const qaSectionIds = useLiveQuery(() => db.qas.orderBy('sectionId').keys(), []);
   const [selectedId, setSelectedId] = usePersistentState('selected', null);
   const [expanded, setExpanded] = usePersistentState('expanded', []);
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [addingCourse, setAddingCourse] = useState(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -48,12 +53,35 @@ export default function App() {
     return { byId, children };
   }, [sections]);
 
+  const qaCounts = useMemo(() => {
+    const m = new Map();
+    for (const id of qaSectionIds || []) m.set(id, (m.get(id) || 0) + 1);
+    return m;
+  }, [qaSectionIds]);
+
   const selected = selectedId ? tree.byId.get(selectedId) : null;
 
-  // Seçili bölüm silindiyse seçimi temizle
+  const ancestorsOf = (id) => {
+    const list = [];
+    let cur = tree.byId.get(id);
+    while (cur && cur.parentId !== ROOT) {
+      list.push(cur.parentId);
+      cur = tree.byId.get(cur.parentId);
+    }
+    return list;
+  };
+
+  // Seçili bölüm silindiyse seçimi temizle; varsa menüde görünür olsun diye üst bölümlerini aç
   useEffect(() => {
-    if (sections && selectedId && !tree.byId.has(selectedId)) setSelectedId(null);
-  }, [sections, selectedId, tree, setSelectedId]);
+    if (!sections || !selectedId) return;
+    if (!tree.byId.has(selectedId)) {
+      setSelectedId(null);
+      return;
+    }
+    const anc = ancestorsOf(selectedId);
+    if (anc.some((a) => !expanded.includes(a))) setExpanded((e) => Array.from(new Set([...e, ...anc])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections, selectedId]);
 
   const path = useMemo(() => {
     const p = [];
@@ -68,14 +96,7 @@ export default function App() {
   const select = (id) => {
     setSelectedId(id);
     setSidebarOpen(false);
-    // Seçilen bölümün üst bölümlerini aç ki menüde görünsün
-    const ancestors = [];
-    let cur = tree.byId.get(id);
-    while (cur && cur.parentId !== ROOT) {
-      ancestors.push(cur.parentId);
-      cur = tree.byId.get(cur.parentId);
-    }
-    if (ancestors.length) setExpanded((e) => Array.from(new Set([...e, ...ancestors])));
+    window.scrollTo?.(0, 0);
   };
 
   const toggleExpanded = (id, force) =>
@@ -86,54 +107,85 @@ export default function App() {
 
   if (!sections) return null;
 
+  const startAddCourse = () => {
+    setAddingCourse(true);
+    setSidebarOpen(true);
+  };
+
   return (
     <div className={'app' + (sidebarOpen ? ' sidebar-open' : '')}>
       <Sidebar
         tree={tree}
+        qaCounts={qaCounts}
         selectedId={selectedId}
         expanded={expanded}
         onSelect={select}
         onToggle={toggleExpanded}
         theme={theme}
         onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+        addingCourse={addingCourse}
+        setAddingCourse={setAddingCourse}
       />
       <div className="backdrop" onClick={() => setSidebarOpen(false)} />
       <main className="main">
-        <button className="menu-btn" onClick={() => setSidebarOpen(true)} aria-label="Menüyü aç">
-          ☰
-        </button>
+        <div className="mobile-bar">
+          <button className="icon-btn" onClick={() => setSidebarOpen(true)} aria-label="Menüyü aç">
+            <Menu size={20} />
+          </button>
+          <span className="mobile-title">{selected ? selected.name : 'Ders Defteri'}</span>
+        </div>
         {selected ? (
           <SectionView
             key={selected.id}
             section={selected}
             path={path}
             subsections={tree.children.get(selected.id) || []}
+            tree={tree}
+            qaCounts={qaCounts}
             onSelect={select}
             onExpand={(id) => toggleExpanded(id, true)}
           />
         ) : (
-          <Welcome hasCourses={(tree.children.get(ROOT) || []).length > 0} />
+          <Welcome hasCourses={(tree.children.get(ROOT) || []).length > 0} onAddCourse={startAddCourse} />
         )}
       </main>
+      <UIHost />
     </div>
   );
 }
 
-function Welcome({ hasCourses }) {
+function Welcome({ hasCourses, onAddCourse }) {
+  const steps = [
+    { icon: BookOpen, title: 'Ders oluştur', text: 'Her ders için ayrı bir defter aç.' },
+    { icon: FolderTree, title: 'Bölümlere ayır', text: 'PDF 1, PDF 2… istediğin kadar iç içe bölüm.' },
+    { icon: ClipboardPaste, title: 'Soru-cevap yapıştır', text: 'Hangi yapay zekâdan gelirse gelsin, hepsi tek yerde.' },
+  ];
   return (
     <div className="welcome">
+      <img className="welcome-logo" src="/favicon.svg" alt="" width="64" height="64" />
       <h1>Ders Defteri</h1>
-      <p>Farklı yapay zekâ sohbetlerinden çıkan soru-cevapları tek bir yerde, ders ders topla.</p>
-      <ol>
-        <li>Soldaki <b>+ Yeni ders</b> ile bir ders oluştur.</li>
-        <li>Dersin içinde bölümler (ör. PDF 1, PDF 2…) ve alt bölümler aç.</li>
-        <li>Bir bölüme gir, sorunu ve yapay zekânın cevabını yapıştır.</li>
-      </ol>
-      <p className="muted">
-        {hasCourses
-          ? 'Başlamak için soldan bir ders ya da bölüm seç.'
-          : 'Notların bu tarayıcıda saklanır. Arada bir “Yedeği indir” ile yedek almayı unutma.'}
-      </p>
+      <p className="welcome-lead">Farklı yapay zekâ sohbetlerinden çıkan soru-cevapları ders ders, tek bir yerde topla.</p>
+      <div className="steps">
+        {steps.map((s, i) => (
+          <div className="step" key={i}>
+            <div className="step-icon">
+              <s.icon size={20} />
+            </div>
+            <div>
+              <div className="step-title">{s.title}</div>
+              <div className="step-text">{s.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {hasCourses ? (
+        <p className="muted">Başlamak için soldan bir ders ya da bölüm seç.</p>
+      ) : (
+        <button className="btn primary lg" onClick={onAddCourse}>
+          <Plus size={18} /> İlk dersini oluştur
+        </button>
+      )}
+      <p className="muted small welcome-note">Notların bu cihazda saklanır. Ara sıra sol alttan yedek almayı unutma.</p>
     </div>
   );
 }

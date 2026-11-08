@@ -22,6 +22,8 @@ import {
   FileX,
   RefreshCw,
   Image as ImageIcon,
+  RotateCcw,
+  CircleCheck,
 } from 'lucide-react';
 import {
   db,
@@ -34,6 +36,7 @@ import {
   setSectionPdf,
   removeSectionPdf,
   restorePdfData,
+  setQAStatus,
 } from './db.js';
 import { confirmDeleteSection } from './Sidebar.jsx';
 import InlineInput from './InlineInput.jsx';
@@ -411,6 +414,7 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
     if (!qa) return;
     handledFocus.current = focus.key;
     if (pdfMode) setFilter(qa.page ? 'page' : 'all');
+    setStatusFilter('all');
     setOpenIds((s) => new Set(s).add(qa.id));
     setTimeout(() => {
       const el = document.querySelector(`[data-qa="${qa.id}"]`);
@@ -428,11 +432,28 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
       return n;
     });
 
-  const visible = useMemo(() => {
+  // Önce sayfa filtresi (PDF modunda), sonra durum filtresi
+  const base = useMemo(() => {
     if (!qas) return null;
     if (!pdfMode || filter === 'all') return qas;
     return qas.filter((q) => q.page === page);
   }, [qas, pdfMode, filter, page]);
+
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'review' | 'known' | 'none'
+  const statusCounts = useMemo(() => {
+    const c = { all: 0, review: 0, known: 0, none: 0 };
+    for (const q of base || []) {
+      c.all++;
+      c[q.status === 'review' || q.status === 'known' ? q.status : 'none']++;
+    }
+    return c;
+  }, [base]);
+
+  const visible = useMemo(() => {
+    if (!base) return null;
+    if (statusFilter === 'all') return base;
+    return base.filter((q) => (statusFilter === 'none' ? !q.status : q.status === statusFilter));
+  }, [base, statusFilter]);
 
   // "Tümü" görünümünde sayfaya göre grupla
   const groups = useMemo(() => {
@@ -495,6 +516,7 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
           }
         }}
         onMove={(d) => moveItem('qas', qa.id, d)}
+        onStatus={(s) => setQAStatus(qa.id, qa.status === s ? null : s)}
       />
     );
 
@@ -537,6 +559,28 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
         </div>
       </div>
 
+      {statusCounts.all > 0 && (
+        <div className="status-filter">
+          {[
+            ['all', 'Tümü', null],
+            ['review', 'Tekrar bak', <RotateCcw key="r" size={13} />],
+            ['known', 'Anladım', <CircleCheck key="k" size={13} />],
+            ['none', 'İşaretsiz', null],
+          ].map(([id, label, icon]) => (
+            <button
+              key={id}
+              className={'sf-chip ' + id + (statusFilter === id ? ' on' : '')}
+              onClick={() => setStatusFilter(id)}
+              disabled={id !== 'all' && statusCounts[id] === 0 && statusFilter !== id}
+            >
+              {icon}
+              {label}
+              <span className="sf-count">{statusCounts[id]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="qa-list">
         {groups.map((g) => (
           <div key={g.key} className="qa-group">
@@ -549,7 +593,15 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
             {g.items.map((qa, i) => renderItem(qa, i, g.items))}
           </div>
         ))}
-        {visible?.length === 0 && !adding && (
+        {visible?.length === 0 && base?.length > 0 && (
+          <div className="empty small-empty">
+            <div className="empty-text">Bu filtrede soru yok.</div>
+            <button className="btn sm" onClick={() => setStatusFilter('all')}>
+              Tümünü göster
+            </button>
+          </div>
+        )}
+        {base?.length === 0 && !adding && (
           <div className="empty">
             <div className="empty-icon">
               <MessageCircleQuestion size={26} />
@@ -595,7 +647,7 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
   );
 }
 
-function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, onEdit, onDelete, onMove }) {
+function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, onEdit, onDelete, onMove, onStatus }) {
   const [copied, setCopied] = useState(false);
   const [zoomed, setZoomed] = useState(false);
   const imgUrl = useObjectURL(open ? qa.image : null);
@@ -608,7 +660,23 @@ function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, 
   };
 
   return (
-    <article className={"qa" + (open ? " open" : "")} data-qa={qa.id}>
+    <article className={'qa' + (open ? ' open' : '') + (qa.status ? ' st-' + qa.status : '')} data-qa={qa.id}>
+      <div className="qa-status" onClick={(e) => e.stopPropagation()}>
+        <button
+          className={'st-btn review' + (qa.status === 'review' ? ' on' : '')}
+          title={qa.status === 'review' ? 'Tekrar bak işaretini kaldır' : 'Tekrar bak'}
+          onClick={() => onStatus('review')}
+        >
+          <RotateCcw size={14} />
+        </button>
+        <button
+          className={'st-btn known' + (qa.status === 'known' ? ' on' : '')}
+          title={qa.status === 'known' ? 'Anladım işaretini kaldır' : 'Anladım'}
+          onClick={() => onStatus('known')}
+        >
+          <CircleCheck size={15} />
+        </button>
+      </div>
       <button className="qa-question" onClick={onToggle} aria-expanded={open}>
         <span className="qa-num">{index}</span>
         <span className="qa-q-text">

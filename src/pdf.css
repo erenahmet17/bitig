@@ -93,6 +93,77 @@
 .sr-count { margin-left: auto; }
 .qa.flash { box-shadow: 0 0 0 3px var(--accent), var(--shadow-md); transition: box-shadow 0.3s; }
 
+/* ================= Anladım / Tekrar bak ================= */
+:root { --known: #2f9e57; --review: #e8590c; --known-soft: rgba(47, 158, 87, 0.12); --review-soft: rgba(232, 89, 12, 0.12); }
+:root[data-theme='dark'] { --known: #63d48b; --review: #ff9f5a; --known-soft: rgba(99, 212, 139, 0.14); --review-soft: rgba(255, 159, 90, 0.14); }
+.qa-q-text { margin-right: 62px; }
+.qa-status {
+  position: absolute;
+  top: 11px;
+  right: 40px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+}
+.st-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+.qa:hover .st-btn,
+.qa:focus-within .st-btn,
+.st-btn.on { opacity: 1; }
+.st-btn:hover { background: var(--hover); }
+.st-btn.review:hover, .st-btn.review.on { color: var(--review); }
+.st-btn.known:hover, .st-btn.known.on { color: var(--known); }
+.st-btn.review.on { background: var(--review-soft); }
+.st-btn.known.on { background: var(--known-soft); }
+.qa.st-review { border-left: 3px solid var(--review); }
+.qa.st-known { border-left: 3px solid var(--known); }
+.qa.st-known .qa-num { background: var(--known-soft); color: var(--known); }
+.qa.st-review .qa-num { background: var(--review-soft); color: var(--review); }
+.qa-page-tag { right: 108px; }
+
+.status-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.qa-pane .status-filter { margin-top: -2px; }
+.sf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.sf-chip:hover:not(:disabled) { border-color: var(--border-strong); }
+.sf-chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.sf-chip.review.on { background: var(--review); border-color: var(--review); color: #fff; }
+.sf-chip.known.on { background: var(--known); border-color: var(--known); color: #fff; }
+:root[data-theme='dark'] .sf-chip.review.on, :root[data-theme='dark'] .sf-chip.known.on { color: #111; }
+.sf-count { font-size: 11px; opacity: 0.75; font-variant-numeric: tabular-nums; }
+.small-empty { padding: 22px; gap: 10px; }
+.small-empty .empty-text { margin: 0; }
+.review-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--review);
+  padding: 0 3px;
+  font-variant-numeric: tabular-nums;
+}
+.tree-row:hover .review-count, .tree-row:focus-within .review-count { display: none; }
+
 /* Güncelleme bildirimi */
 .update-banner {
   display: flex;

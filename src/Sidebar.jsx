@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   Search,
   RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 import { useUpdateReady, applyUpdate } from './updater.js';
 import { db, ROOT, addSection,renameSection, deleteSection, collectSubtree, moveItem, exportAll, importAll } from './db.js';
@@ -46,7 +47,7 @@ function totalCount(id, tree, qaCounts) {
   return n;
 }
 
-export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect, onToggle, theme, onToggleTheme, addingCourse, setAddingCourse, onCollapse, onOpenSearch }) {
+export default function Sidebar({ tree, qaCounts, reviewCounts, selectedId, expanded, onSelect, onToggle, theme, onToggleTheme, addingCourse, setAddingCourse, onCollapse, onOpenSearch }) {
   // editing: { type: 'add', parentId } | { type: 'rename', id }
   const [editing, setEditing] = useState(null);
   const { canInstall, install } = useInstallPrompt();
@@ -61,7 +62,7 @@ export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect
     onSelect(id);
   };
 
-  const ctx = { tree, qaCounts, selectedId, expanded, onSelect, onToggle, editing, setEditing, onAdd: handleAdd };
+  const ctx = { tree, qaCounts, reviewCounts, selectedId, expanded, onSelect, onToggle, editing, setEditing, onAdd: handleAdd };
 
   return (
     <aside className="sidebar">
@@ -131,12 +132,13 @@ export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect
 }
 
 function TreeNode(props) {
-  const { node, depth, tree, qaCounts, selectedId, expanded, onSelect, onToggle, editing, setEditing, onAdd } = props;
+  const { node, depth, tree, qaCounts, reviewCounts, selectedId, expanded, onSelect, onToggle, editing, setEditing, onAdd } = props;
   const kids = tree.children.get(node.id) || [];
   const isOpen = expanded.includes(node.id);
   const isRenaming = editing?.type === 'rename' && editing.id === node.id;
   const isAddingChild = editing?.type === 'add' && editing.parentId === node.id;
   const count = totalCount(node.id, tree, qaCounts);
+  const review = totalCount(node.id, tree, reviewCounts);
   const isCourse = depth === 0;
   const Icon = isCourse ? BookOpen : isOpen && kids.length ? FolderOpen : Folder;
 
@@ -176,6 +178,11 @@ function TreeNode(props) {
             <button className="tree-label" title={node.name} onClick={(e) => (e.stopPropagation(), onSelect(node.id))}>
               {node.name}
             </button>
+            {review > 0 && (
+              <span className="review-count" title={`${review} soru tekrar bak işaretli`}>
+                <RotateCcw size={10} /> {review}
+              </span>
+            )}
             {count > 0 && <span className="count">{count}</span>}
             <span className="row-actions" onClick={(e) => e.stopPropagation()}>
               <button title="Alt bölüm ekle" onClick={() => setEditing({ type: 'add', parentId: node.id })}>

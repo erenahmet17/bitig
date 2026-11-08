@@ -19,6 +19,14 @@ db.version(2).stores({
   annotations: 'id, pdfId, [pdfId+page]',
 });
 
+// status: 'known' (anladım) | 'review' (tekrar bak) | yoksa işaretsiz
+db.version(3).stores({
+  sections: 'id, parentId, order',
+  qas: 'id, sectionId, order, status',
+  pdfs: 'id, sectionId',
+  annotations: 'id, pdfId, [pdfId+page]',
+});
+
 export const uid = () =>
   crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
 
@@ -106,6 +114,10 @@ export function updateQA(id, question, answer, page, image) {
   if (page !== undefined) changes.page = page || null;
   if (image !== undefined) changes.image = image || null;
   return db.qas.update(id, changes);
+}
+
+export function setQAStatus(id, status) {
+  return db.qas.update(id, { status: status || null, statusAt: Date.now() });
 }
 
 export function deleteQA(id) {

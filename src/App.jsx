@@ -28,6 +28,11 @@ export default function App() {
   const sections = useLiveQuery(() => db.sections.toArray(), []);
   // Her bölümdeki soru sayısı (sadece indeks okunur, hızlıdır)
   const qaSectionIds = useLiveQuery(() => db.qas.orderBy('sectionId').keys(), []);
+  // "Tekrar bak" işaretli soruların bölümleri
+  const reviewSectionIds = useLiveQuery(
+    async () => (await db.qas.where('status').equals('review').toArray()).map((q) => q.sectionId),
+    []
+  );
   const [selectedId, setSelectedId] = usePersistentState('selected', null);
   const [expanded, setExpanded] = usePersistentState('expanded', []);
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light');
@@ -75,6 +80,12 @@ export default function App() {
     for (const id of qaSectionIds || []) m.set(id, (m.get(id) || 0) + 1);
     return m;
   }, [qaSectionIds]);
+
+  const reviewCounts = useMemo(() => {
+    const m = new Map();
+    for (const id of reviewSectionIds || []) m.set(id, (m.get(id) || 0) + 1);
+    return m;
+  }, [reviewSectionIds]);
 
   const selected = selectedId ? tree.byId.get(selectedId) : null;
 
@@ -136,6 +147,7 @@ export default function App() {
       <Sidebar
         tree={tree}
         qaCounts={qaCounts}
+        reviewCounts={reviewCounts}
         selectedId={selectedId}
         expanded={expanded}
         onSelect={select}

@@ -2,11 +2,6 @@
 
 Sırayla gidiyoruz; biten maddeyi siliyoruz.
 
-## 3. "Anladım / Tekrar bak" işaretleri
-- Her soruya tek tıkla işaret: Anladım ✓ / Tekrar bak ↻ / işaretsiz.
-- Soru listesinde filtre: Tümü / Tekrar bak / Anladım / İşaretsiz.
-- Sol menüde bölümlerin yanında "tekrar bak" sayısı.
-
 ## 4. Tekrar / sınav modu
 - Bir bölümden (alt bölümleriyle birlikte) ya da bütün dersten başlatılır.
 - Seçenekler: hangi sorular (tümü / sadece tekrar bak / işaretsiz), karışık sıra.

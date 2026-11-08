@@ -9,6 +9,7 @@ import {
   PenLine,
   StickyNote,
   Eraser,
+  Scan,
   PanelLeft,
   Sparkles,
   Copy,
@@ -28,12 +29,18 @@ export const COLORS = [
 ];
 const colorOf = (id) => COLORS.find((c) => c.id === id)?.value || id;
 
+// Silgi için yuvarlak imleç
+const ERASER_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="11" cy="11" r="9" fill="rgba(255,255,255,0.6)" stroke="#555" stroke-width="1.5"/></svg>'
+)}") 11 11, auto`;
+
 const TOOLS = [
   { id: 'select', icon: MousePointer2, label: 'Seç (metni seçince vurgula / yapay zekâya sor)' },
+  { id: 'snip', icon: Scan, label: 'Alan seç (ekran görüntüsü al, yapay zekâya sor)' },
   { id: 'marker', icon: Highlighter, label: 'Fosforlu kalem' },
   { id: 'pen', icon: PenLine, label: 'Kalem' },
   { id: 'note', icon: StickyNote, label: 'Not ekle (sayfaya tıkla)' },
-  { id: 'eraser', icon: Eraser, label: 'Silgi (işaretlemeye tıkla)' },
+  { id: 'eraser', icon: Eraser, label: 'Silgi (tıkla ya da üzerinden sürükle)' },
 ];
 
 export const AI_TARGETS = [
@@ -42,11 +49,48 @@ export const AI_TARGETS = [
   { id: 'gemini', label: 'Gemini', url: () => 'https://gemini.google.com/app' },
 ];
 
+// Açılır menünün (ortası x'te) kaydırma alanının görünen kısmından taşmaması için
+function clampMenuX(x, scroller, half) {
+  const min = scroller.scrollLeft + half + 6;
+  const max = scroller.scrollLeft + scroller.clientWidth - half - 6;
+  return max < min ? (min + max) / 2 : Math.max(min, Math.min(max, x));
+}
+
+// Görsel sorularda site sadece açılır; görseli kullanıcı yapıştırır
+export const AI_HOME = {
+  chatgpt: 'https://chatgpt.com/',
+  claude: 'https://claude.ai/new',
+  gemini: 'https://gemini.google.com/app',
+};
+
+export async function copyImage(blob) {
+  await navigator.clipboard.write([new ClipboardItem({ [blob.type || 'image/png']: blob })]);
+}
+
+// Sayfanın seçilen bölgesini yüksek çözünürlükte PNG olarak çıkarır. r: [x, y, w, h] (0-1)
+async function captureRegion(pageObj, [x, y, w, h]) {
+  const base = pageObj.getViewport({ scale: 1 });
+  const s = Math.min(4, Math.max(2, 1400 / (w * base.width)));
+  const vp = pageObj.getViewport({ scale: s });
+  const full = document.createElement('canvas');
+  full.width = Math.ceil(vp.width);
+  full.height = Math.ceil(vp.height);
+  await pageObj.render({ canvasContext: full.getContext('2d'), viewport: vp }).promise;
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, Math.round(w * full.width));
+  out.height = Math.max(1, Math.round(h * full.height));
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(full, -Math.round(x * full.width), -Math.round(y * full.height));
+  return new Promise((resolve) => out.toBlob(resolve, 'image/png'));
+}
+
 export function buildPrompt(text) {
   return `Ders çalışıyorum. Aşağıdaki metni bir öğrenciye anlatır gibi, gerekirse örneklerle açıkla:\n\n"${text}"`;
 }
 
-export default function PdfViewer({ pdf, page, setPage, annotations, pageBadges, onAsk }) {
+export default function PdfViewer({ pdf, page, setPage, annotations, pageBadges, onAsk, onAskImage }) {
   const [doc, setDoc] = useState(null);
   const [error, setError] = useState(null);
   const [zoom, setZoom] = useState(1); // genişliğe sığdırmaya göre çarpan
@@ -161,6 +205,7 @@ export default function PdfViewer({ pdf, page, setPage, annotations, pageBadges,
             color={color}
             annotations={pageAnnotations}
             onAsk={onAsk}
+            onAskImage={onAskImage}
           />
         )}
         {doc && (
@@ -253,7 +298,7 @@ function Thumb({ doc, n }) {
 }
 
 // ---------------- Tek sayfa görünümü ----------------
-function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk }) {
+function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk, onAskImage }) {
   const scrollerRef = useRef(null);
   const pageRef = useRef(null);
   const canvasRef = useRef(null);
@@ -311,10 +356,89 @@ function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk }
     return [(clientX - r.left) / r.width, (clientY - r.top) / r.height];
   };
 
+  // ---- Silgi: imlecin altındaki (biraz toleranslı) işaretlemeyi bulur ----
+  const [erasing, setErasing] = useState(false);
+  const [hoverId, setHoverId] = useState(null);
+  const erased = useRef(new Set());
+  const hitTest = (clientX, clientY) => {
+    const [nx, ny] = toNorm(clientX, clientY);
+    const px = nx * W;
+    const py = ny * H;
+    const tol = 9 / (scale || 1); // ekranda ~9 piksel
+    for (let i = annotations.length - 1; i >= 0; i--) {
+      const a = annotations[i];
+      if (a.type === 'highlight') {
+        for (const [x, y, w, h] of a.rects) {
+          if (px >= x * W - tol && px <= (x + w) * W + tol && py >= y * H - tol && py <= (y + h) * H + tol) return a.id;
+        }
+      } else if (a.type === 'ink') {
+        const lim = tol + a.width / 2;
+        const pts = a.points;
+        for (let j = 0; j < pts.length; j++) {
+          const ax = pts[j][0] * W;
+          const ay = pts[j][1] * H;
+          const b = pts[j + 1] || pts[j];
+          const bx = b[0] * W;
+          const by = b[1] * H;
+          const dx = bx - ax;
+          const dy = by - ay;
+          const len2 = dx * dx + dy * dy;
+          const t = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+          const qx = ax + t * dx - px;
+          const qy = ay + t * dy - py;
+          if (qx * qx + qy * qy <= lim * lim) return a.id;
+        }
+      }
+    }
+    return null;
+  };
+  const eraseAt = (e) => {
+    const id = hitTest(e.clientX, e.clientY);
+    if (id && !erased.current.has(id)) {
+      erased.current.add(id);
+      deleteAnnotation(id);
+    }
+  };
+
+  // ---- Alan seçme (ekran görüntüsü) ----
+  const [snipDrag, setSnipDrag] = useState(null); // { x0, y0, x1, y1 } sürüklerken
+  const [snip, setSnip] = useState(null); // { rect, blob, x, y } bırakınca
+  useEffect(() => {
+    if (tool !== 'snip') setSnip(null);
+  }, [tool]);
+  const finishSnip = async (d) => {
+    const x = Math.max(0, Math.min(d.x0, d.x1));
+    const y = Math.max(0, Math.min(d.y0, d.y1));
+    const w = Math.min(1, Math.max(d.x0, d.x1)) - x;
+    const h = Math.min(1, Math.max(d.y0, d.y1)) - y;
+    if (w * W * scale < 12 || h * H * scale < 12) return; // çok küçük, yanlışlıkla tıklama
+    const rect = [x, y, w, h];
+    const pr = pageRef.current.getBoundingClientRect();
+    const sr = scrollerRef.current.getBoundingClientRect();
+    const menuX = clampMenuX(pr.left - sr.left + scrollerRef.current.scrollLeft + (x + w / 2) * pr.width, scrollerRef.current, 210);
+    const menuY = pr.top - sr.top + scrollerRef.current.scrollTop + (y + h) * pr.height + 8;
+    setSnip({ rect, blob: null, x: menuX, y: menuY });
+    const blob = await captureRegion(pageObj, rect);
+    setSnip((s) => (s && s.rect === rect ? { ...s, blob } : s));
+  };
+
   // ---- Kalem / fosforlu kalem ----
   const onPointerDown = (e) => {
     if (e.button !== 0) return;
-    if (tool === 'pen' || tool === 'marker') {
+    if (tool === 'snip') {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {}
+      const [x, y] = toNorm(e.clientX, e.clientY);
+      setSnip(null);
+      setSnipDrag({ x0: x, y0: y, x1: x, y1: y });
+    } else if (tool === 'eraser') {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {}
+      setErasing(true);
+      eraseAt(e);
+    } else if (tool === 'pen' || tool === 'marker') {
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch {}
@@ -325,11 +449,34 @@ function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk }
     }
   };
   const onPointerMove = (e) => {
+    if (tool === 'snip') {
+      if (snipDrag) {
+        const [x, y] = toNorm(e.clientX, e.clientY);
+        setSnipDrag((d) => ({ ...d, x1: x, y1: y }));
+      }
+      return;
+    }
+    if (tool === 'eraser') {
+      if (erasing) eraseAt(e);
+      else setHoverId(hitTest(e.clientX, e.clientY));
+      return;
+    }
     if (!drawing) return;
     const pt = toNorm(e.clientX, e.clientY);
     setDrawing((d) => ({ points: [...d.points, pt] }));
   };
   const onPointerUp = () => {
+    if (snipDrag) {
+      const d = snipDrag;
+      setSnipDrag(null);
+      finishSnip(d);
+      return;
+    }
+    if (erasing) {
+      setErasing(false);
+      erased.current.clear();
+      return;
+    }
     if (!drawing) return;
     const pts = drawing.points;
     setDrawing(null);
@@ -367,7 +514,7 @@ function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk }
         setSelection({
           text,
           rects,
-          x: Math.min(last.left - sr.left + scrollerRef.current.scrollLeft + last.width / 2, scrollerRef.current.scrollWidth - 150),
+          x: clampMenuX(last.left - sr.left + scrollerRef.current.scrollLeft + last.width / 2, scrollerRef.current, 180),
           y: last.bottom - sr.top + scrollerRef.current.scrollTop + 8,
         });
       }, 0);
@@ -391,19 +538,16 @@ function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk }
     clearSelection();
   };
 
-  const eraseProps = (a) =>
-    tool === 'eraser'
-      ? {
-          className: 'erasable',
-          onPointerDown: (e) => {
-            e.stopPropagation();
-            deleteAnnotation(a.id);
-          },
-        }
-      : {};
+  // Silginin üzerine geldiği işaretleme soluklaşır
+  const hoverCls = (a) => (tool === 'eraser' && hoverId === a.id ? ' erase-hover' : '');
 
-  const drawingMode = tool === 'pen' || tool === 'marker' || tool === 'note';
-  const cursor = { select: 'auto', pen: 'crosshair', marker: 'crosshair', note: 'copy', eraser: 'cell' }[tool];
+  const drawingMode = tool !== 'select';
+  const cursor = { select: 'auto', snip: 'crosshair', pen: 'crosshair', marker: 'crosshair', note: 'copy', eraser: ERASER_CURSOR }[tool];
+
+  // Ekranda gösterilecek seçim dikdörtgeni (sürüklerken ya da bıraktıktan sonra)
+  const snipBox = snipDrag
+    ? [Math.min(snipDrag.x0, snipDrag.x1), Math.min(snipDrag.y0, snipDrag.y1), Math.abs(snipDrag.x1 - snipDrag.x0), Math.abs(snipDrag.y1 - snipDrag.y0)]
+    : snip?.rect;
 
   return (
     <div className="page-scroller" ref={scrollerRef} onScroll={() => selection && setSelection(null)}>
@@ -423,10 +567,11 @@ function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk }
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          onPointerLeave={() => setHoverId(null)}
         >
           {annotations.map((a) =>
             a.type === 'highlight' ? (
-              <g key={a.id} {...eraseProps(a)}>
+              <g key={a.id} className={hoverCls(a)}>
                 {a.rects.map(([x, y, w, h], i) => (
                   <rect key={i} x={x * W} y={y * H} width={w * W} height={h * H} rx={1.5} fill={colorOf(a.color)} className="hl-rect" />
                 ))}
@@ -434,7 +579,6 @@ function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk }
             ) : a.type === 'ink' ? (
               <polyline
                 key={a.id}
-                {...eraseProps(a)}
                 points={a.points.map(([x, y]) => `${x * W},${y * H}`).join(' ')}
                 fill="none"
                 stroke={colorOf(a.color)}
@@ -442,7 +586,7 @@ function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk }
                 strokeOpacity={a.opacity}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={a.opacity < 1 ? 'ink marker' : 'ink'}
+                className={(a.opacity < 1 ? 'ink marker' : 'ink') + hoverCls(a)}
               />
             ) : null
           )}
@@ -459,12 +603,38 @@ function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk }
             />
           )}
         </svg>
+        {snipBox && (
+          <div
+            className="snip-box"
+            style={{ left: `${snipBox[0] * 100}%`, top: `${snipBox[1] * 100}%`, width: `${snipBox[2] * 100}%`, height: `${snipBox[3] * 100}%` }}
+          />
+        )}
         {annotations
           .filter((a) => a.type === 'note')
           .map((a) => (
             <NotePin key={a.id} note={a} tool={tool} open={openNote === a.id} setOpen={(v) => setOpenNote(v ? a.id : null)} />
           ))}
       </div>
+
+      {snip && (
+        <SnipMenu
+          snip={snip}
+          onCopy={async () => {
+            try {
+              await copyImage(snip.blob);
+              toast('Görüntü kopyalandı');
+            } catch {
+              toast('Görüntü kopyalanamadı', 'error');
+            }
+            setSnip(null);
+          }}
+          onAsk={(target) => {
+            onAskImage(snip.blob, target);
+            setSnip(null);
+          }}
+          onClose={() => setSnip(null)}
+        />
+      )}
 
       {selection && (
         <SelectionMenu
@@ -516,6 +686,26 @@ function SelectionMenu({ selection, color, onHighlight, onCopy, onAsk }) {
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+function SnipMenu({ snip, onCopy, onAsk, onClose }) {
+  const ready = !!snip.blob;
+  return (
+    <div className="sel-menu" style={{ left: snip.x, top: snip.y }} onPointerDown={(e) => e.stopPropagation()}>
+      <span className="sel-label">{ready ? 'Görüntüyü sor:' : 'Hazırlanıyor…'}</span>
+      {AI_TARGETS.map((t) => (
+        <button key={t.id} disabled={!ready} onClick={() => onAsk(t.id)}>
+          {t.label}
+        </button>
+      ))}
+      <button disabled={!ready} onClick={onCopy} title="Sadece panoya kopyala">
+        <Copy size={14} /> Kopyala
+      </button>
+      <button onClick={onClose} title="Vazgeç">
+        <X size={14} />
+      </button>
     </div>
   );
 }

@@ -21,6 +21,7 @@ import {
   FileText,
   FileX,
   RefreshCw,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   db,
@@ -39,7 +40,14 @@ import InlineInput from './InlineInput.jsx';
 import Markdown from './Markdown.jsx';
 import { handleSmartPaste } from './paste.js';
 import { confirmDanger, toast } from './ui.jsx';
-import PdfViewer, { AI_TARGETS, buildPrompt } from './pdf/PdfViewer.jsx';
+import PdfViewer, { AI_TARGETS, AI_HOME, buildPrompt, copyImage } from './pdf/PdfViewer.jsx';
+
+// Blob'u <img> için geçici adrese çevirir
+function useObjectURL(blob) {
+  const url = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
+  useEffect(() => () => url && URL.revokeObjectURL(url), [url]);
+  return url;
+}
 
 function countAll(id, tree, qaCounts) {
   let n = qaCounts.get(id) || 0;
@@ -330,6 +338,24 @@ function PdfWorkspace({ pdf, qas, annotations, sectionId }) {
     setAskDraft({ question: `“${short}” kısmını açıklar mısın?`, key: Date.now() });
   };
 
+  const onAskImage = async (blob, target) => {
+    let copied = true;
+    try {
+      await copyImage(blob);
+    } catch {
+      copied = false;
+    }
+    const t = AI_TARGETS.find((x) => x.id === target);
+    if (t) window.open(AI_HOME[t.id], '_blank', 'noopener');
+    toast(
+      copied
+        ? `Görüntü kopyalandı. ${t ? t.label + '’da' : 'Yapay zekâda'} Ctrl+V ile yapıştır, cevabı buraya ekle.`
+        : 'Görüntü panoya kopyalanamadı, ama soruya eklendi.',
+      copied ? 'success' : 'error'
+    );
+    setAskDraft({ question: 'Bu görseldeki kısmı açıklar mısın?', image: blob, key: Date.now() });
+  };
+
   const startDrag = (e) => {
     e.preventDefault();
     const rect = splitRef.current.getBoundingClientRect();
@@ -350,7 +376,7 @@ function PdfWorkspace({ pdf, qas, annotations, sectionId }) {
 
   return (
     <div className="split" ref={splitRef} style={{ gridTemplateColumns: `${split}fr 8px ${1 - split}fr` }}>
-      <PdfViewer pdf={pdf} page={page} setPage={setPage} annotations={annotations} pageBadges={pageBadges} onAsk={onAsk} />
+      <PdfViewer pdf={pdf} page={page} setPage={setPage} annotations={annotations} pageBadges={pageBadges} onAsk={onAsk} onAskImage={onAskImage} />
       <div className="splitter" onPointerDown={startDrag} title="Sürükleyerek genişliği ayarla" />
       <div className="qa-pane">
         <QAPanel
@@ -431,8 +457,8 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
         showPage={pdfMode}
         defaultPage={qa.page}
         pageCount={pageCount}
-        onSubmit={async (q, a, p) => {
-          await updateQA(qa.id, q, a, pdfMode ? p : undefined);
+        onSubmit={async (q, a, p, img) => {
+          await updateQA(qa.id, q, a, pdfMode ? p : undefined, img);
           setEditingId(null);
           toast('Kaydedildi');
         }}
@@ -534,15 +560,15 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
         <QAForm
           key={askDraft?.key || 'new'}
           keepOpen
-          initial={askDraft ? { question: askDraft.question } : null}
+          initial={askDraft ? { question: askDraft.question, image: askDraft.image } : null}
           focusAnswer={!!askDraft}
           title={pdfMode ? 'Yeni soru-cevap' : 'Yeni soru-cevap'}
           submitLabel="Ekle"
           showPage={pdfMode}
           defaultPage={page}
           pageCount={pageCount}
-          onSubmit={async (q, a, p) => {
-            await addQA(sectionId, q, a, pdfMode ? p : null);
+          onSubmit={async (q, a, p, img) => {
+            await addQA(sectionId, q, a, pdfMode ? p : null, img);
             clearAskDraft?.();
           }}
           onCancel={closeAdding}
@@ -559,6 +585,8 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
 
 function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, onEdit, onDelete, onMove }) {
   const [copied, setCopied] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
+  const imgUrl = useObjectURL(open ? qa.image : null);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(qa.answer);
@@ -571,9 +599,18 @@ function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, 
     <article className={'qa' + (open ? ' open' : '')}>
       <button className="qa-question" onClick={onToggle} aria-expanded={open}>
         <span className="qa-num">{index}</span>
-        <span className="qa-q-text">{qa.question}</span>
+        <span className="qa-q-text">
+          {qa.question}
+          {imgUrl && <img className="qa-image" src={imgUrl} alt="Soruya eklenen görüntü" onClick={(e) => (e.stopPropagation(), setZoomed(true))} />}
+        </span>
+        {qa.image && !open && <ImageIcon size={16} className="qa-image-badge" aria-label="Görüntülü soru" />}
         <ChevronDown size={18} className="qa-chev" />
       </button>
+      {zoomed && imgUrl && (
+        <div className="image-viewer" onClick={() => setZoomed(false)}>
+          <img src={imgUrl} alt="" />
+        </div>
+      )}
       {open && (
         <div className="qa-answer">
           <div className="answer-avatar" aria-hidden="true">
@@ -615,8 +652,20 @@ function QAForm({ initial, title, submitLabel, onSubmit, onCancel, keepOpen, sho
   const [question, setQuestion] = useState(initial?.question || '');
   const [answer, setAnswer] = useState(initial?.answer || '');
   const [pageVal, setPageVal] = useState(defaultPage ? String(defaultPage) : '');
+  const [image, setImage] = useState(initial?.image || null);
+  const imageUrl = useObjectURL(image);
   const [preview, setPreview] = useState(false);
   const answerRef = useRef(null);
+
+  // Soru kutusuna ekran görüntüsü yapıştırılırsa soruya ekle
+  const onQuestionPaste = (e) => {
+    const file = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith('image/'));
+    if (file) {
+      e.preventDefault();
+      setImage(file);
+      toast('Görüntü soruya eklendi');
+    }
+  };
   const canSave = question.trim() && answer.trim();
 
   // Yeni soru eklerken sayfa değişirse, sayfa alanı da onu takip etsin
@@ -631,10 +680,12 @@ function QAForm({ initial, title, submitLabel, onSubmit, onCancel, keepOpen, sho
   const submit = async () => {
     if (!canSave) return;
     const p = parseInt(pageVal, 10);
-    await onSubmit(question, answer, p >= 1 ? p : null);
+    // Düzenlerken görüntü değişmediyse undefined gönder (dokunma)
+    await onSubmit(question, answer, p >= 1 ? p : null, image === (initial?.image || null) && initial?.id ? undefined : image);
     if (keepOpen) {
       setQuestion('');
       setAnswer('');
+      setImage(null);
       setPreview(false);
       toast('Eklendi — sıradakini yapıştırabilirsin');
       document.getElementById('qa-form-question')?.focus();
@@ -680,9 +731,18 @@ function QAForm({ initial, title, submitLabel, onSubmit, onCancel, keepOpen, sho
           rows={2}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Yapay zekâya sorduğun soruyu yapıştır…"
+          onPaste={onQuestionPaste}
+          placeholder="Yapay zekâya sorduğun soruyu yapıştır… (ekran görüntüsü de yapıştırabilirsin)"
         />
       </label>
+      {imageUrl && (
+        <div className="form-image">
+          <img src={imageUrl} alt="Soruya eklenen görüntü" />
+          <button title="Görüntüyü kaldır" onClick={() => setImage(null)}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
       <div className="field">
         <span className="field-label row">
           Cevap

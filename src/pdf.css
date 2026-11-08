@@ -314,8 +314,8 @@ body.resizing canvas { pointer-events: none; }
 .ann-layer.capture { pointer-events: all; touch-action: none; }
 .hl-rect { opacity: 0.38; mix-blend-mode: multiply; }
 .ink.marker { mix-blend-mode: multiply; }
-.erasable, .erasable * { pointer-events: visiblePainted; cursor: pointer; }
-.erasable:hover { opacity: 0.45; }
+.erase-hover { opacity: 0.3; }
+.tool-eraser .note-icon { cursor: pointer; }
 
 .note-pin { position: absolute; z-index: 4; transform: translate(-50%, -50%); }
 .note-icon {
@@ -383,7 +383,45 @@ body.resizing canvas { pointer-events: none; }
   font-size: 13px;
   font-weight: 500;
 }
-.sel-menu button:hover { background: rgba(255, 255, 255, 0.12); }
+.sel-menu button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+.snip-box {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  border: 2px dashed var(--accent);
+  background: rgba(79, 91, 213, 0.08);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.18);
+  border-radius: 3px;
+}
+
+/* Soruya eklenmiş görüntü */
+.qa-image-badge { flex-shrink: 0; color: var(--muted); margin-top: 4px; }
+.qa-image {
+  display: block;
+  max-width: 100%;
+  max-height: 340px;
+  margin: 12px 0 2px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: zoom-in;
+}
+.form-image { position: relative; align-self: flex-start; }
+.form-image img { display: block; max-width: 100%; max-height: 180px; border-radius: 8px; border: 1px solid var(--border); background: #fff; }
+.form-image button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+}
+.image-viewer { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, 0.75); cursor: zoom-out; }
+.image-viewer img { max-width: 100%; max-height: 100%; border-radius: 8px; background: #fff; }
 .sel-menu button.ai { color: #b9bfff; }
 .sel-menu .dot { width: 12px; height: 12px; border-radius: 50%; }
 .sel-label { font-size: 12px; color: #a3a6b0; padding: 0 6px 0 8px; }

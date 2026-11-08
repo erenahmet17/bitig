@@ -85,7 +85,8 @@ export async function moveItem(table, id, direction) {
 }
 
 // ---------------- Soru-cevaplar ----------------
-export async function addQA(sectionId, question, answer, page = null) {
+// image: soruya eklenmiş ekran görüntüsü (Blob) ya da null
+export async function addQA(sectionId, question, answer, page = null, image = null) {
   const now = Date.now();
   await db.qas.add({
     id: uid(),
@@ -93,15 +94,17 @@ export async function addQA(sectionId, question, answer, page = null) {
     question: question.trim(),
     answer: answer.trim(),
     page: page || null,
+    image: image || null,
     order: await nextOrder('qas', 'sectionId', sectionId),
     createdAt: now,
     updatedAt: now,
   });
 }
 
-export function updateQA(id, question, answer, page) {
+export function updateQA(id, question, answer, page, image) {
   const changes = { question: question.trim(), answer: answer.trim(), updatedAt: Date.now() };
   if (page !== undefined) changes.page = page || null;
+  if (image !== undefined) changes.image = image || null;
   return db.qas.update(id, changes);
 }
 
@@ -178,12 +181,16 @@ export async function exportAll({ includePdfs = true } = {}) {
   for (const p of await db.pdfs.toArray()) {
     pdfs.push({ ...p, data: includePdfs && p.data ? await blobToDataURL(p.data) : null });
   }
+  const qas = [];
+  for (const q of await db.qas.toArray()) {
+    qas.push(q.image ? { ...q, image: await blobToDataURL(q.image) } : q);
+  }
   return {
     app: 'ders-defteri',
     version: 2,
     exportedAt: new Date().toISOString(),
     sections: await db.sections.toArray(),
-    qas: await db.qas.toArray(),
+    qas,
     pdfs,
     annotations: await db.annotations.toArray(),
   };
@@ -198,13 +205,17 @@ export async function importAll(data, mode) {
   for (const p of data.pdfs || []) {
     pdfs.push({ ...p, data: p.data ? await (await fetch(p.data)).blob() : null });
   }
+  const qas = [];
+  for (const q of data.qas) {
+    qas.push(typeof q.image === 'string' ? { ...q, image: await (await fetch(q.image)).blob() } : q);
+  }
   await db.transaction('rw', db.sections, db.qas, db.pdfs, db.annotations, async () => {
     if (mode === 'replace') {
       await Promise.all([db.sections.clear(), db.qas.clear(), db.pdfs.clear(), db.annotations.clear()]);
     }
     // bulkPut: aynı id varsa üzerine yazar, yoksa ekler (birleştirme modu)
     await db.sections.bulkPut(data.sections);
-    await db.qas.bulkPut(data.qas);
+    await db.qas.bulkPut(qas);
     if (mode !== 'replace') {
       // Birleştirirken, cihazdaki PDF dosyasını yedekteki boş kayıtla ezme
       for (const p of pdfs) {

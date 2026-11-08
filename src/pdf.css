@@ -575,7 +575,8 @@ body.resizing canvas { pointer-events: none; }
 }
 
 /* Soruya eklenmiş görüntü */
-.qa-image-badge { flex-shrink: 0; color: var(--muted); margin-top: 4px; }
+.qa-image-badge { flex-shrink: 0; color: var(--muted); margin-top: 4px; margin-right: 62px; }
+.qa-question:has(.qa-image-badge) .qa-q-text { margin-right: 0; }
 .qa-image {
   display: block;
   max-width: 100%;

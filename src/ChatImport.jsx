@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MessagesSquare, X, Pencil, Eye, Trash2, Scissors, ArrowLeft, Check } from 'lucide-react';
+import { MessagesSquare, X, Pencil, Eye, Trash2, Scissors, ArrowLeft, Check, FileDown } from 'lucide-react';
 import Markdown from './Markdown.jsx';
 import { splitChat, toPairs, splitBlocks, messagesToBlocks, blocksToPairs } from './chatSplit.js';
 import { htmlToMarkdown } from './paste.js';
@@ -28,6 +28,7 @@ export default function ChatImport({ sectionId, pdfMode, defaultPage, pageCount,
   const [typed, setTyped] = useState('');
   const [page, setPage] = useState(defaultPage || '');
   const [saving, setSaving] = useState(false);
+  const [lastClip, setLastClip] = useState(null); // tanınmayan biçimi örnek olarak kaydetmek için
 
   const showPairs = (list, src) => {
     setPairs(list.map((p) => ({ ...p, include: true, editing: false })));
@@ -36,6 +37,7 @@ export default function ChatImport({ sectionId, pdfMode, defaultPage, pageCount,
   };
 
   const handle = (html, text) => {
+    setLastClip({ html, text });
     const res = splitChat({ html, text });
     if (res) {
       const list = toPairs(res.messages);
@@ -88,6 +90,22 @@ export default function ChatImport({ sectionId, pdfMode, defaultPage, pageCount,
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [saving, onClose]);
+
+  // Tanınmayan bir biçimi geliştiriciye göndermek için panodaki ham içeriği dosyaya kaydeder
+  const saveSample = () => {
+    const body = `=== HTML ===
+${lastClip?.html || '(yok)'}
+
+=== TEXT ===
+${lastClip?.text || '(yok)'}
+`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([body], { type: 'text/plain;charset=utf-8' }));
+    a.download = 'sohbet-ornegi.txt';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('Örnek İndirilenler klasörüne kaydedildi');
+  };
 
   const markedCount = useMemo(() => blocksToPairs(blocks).length, [blocks]);
 
@@ -145,7 +163,14 @@ export default function ChatImport({ sectionId, pdfMode, defaultPage, pageCount,
           {step === 'mark' && (
             <div className="chat-blocks">
               {!source && pairs.length === 0 && (
-                <div className="chat-note">Sohbeti otomatik ayıramadım. Sorduğun soruların olduğu blokları tıkla; aradaki bloklar cevap olur.</div>
+                <div className="chat-note">
+                  Sohbeti otomatik ayıramadım. Sorduğun soruların olduğu blokları tıkla; aradaki bloklar cevap olur.
+                  {lastClip && (
+                    <button className="btn ghost sm chat-sample" onClick={saveSample} title="Bu biçimin tanınması için panodaki içeriği dosyaya kaydeder">
+                      <FileDown size={14} /> Biçimi tanıması için örneği kaydet
+                    </button>
+                  )}
+                </div>
               )}
               {blocks.map((b, i) => (
                 <button

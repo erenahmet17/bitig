@@ -220,7 +220,7 @@ function TreeNode(props) {
         onDoubleClick={() => setEditing({ type: 'rename', id: node.id })}
       >
         <button
-          className={'chev' + (kids.length ? '' : ' empty') + (isOpen ? ' open' : '')}
+          className={'chev' + (kids.length ? '' : ' no-kids') + (isOpen ? ' open' : '')}
           onClick={(e) => {
             e.stopPropagation();
             onToggle(node.id);
@@ -279,7 +279,7 @@ function TreeNode(props) {
           {isOpen && kids.map((k) => <TreeNode key={k.id} {...props} node={k} depth={depth + 1} />)}
           {isAddingChild && (
             <div className="tree-row editing" style={{ '--depth': depth + 1 }}>
-              <span className="chev empty" />
+              <span className="chev no-kids" />
               <span className="node-icon">
                 <Folder size={16} />
               </span>

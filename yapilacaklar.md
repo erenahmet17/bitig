@@ -2,14 +2,6 @@
 
 Sırayla gidiyoruz; biten maddeyi siliyoruz.
 
-## 4. Tekrar / sınav modu
-- Bir bölümden (alt bölümleriyle birlikte) ya da bütün dersten başlatılır.
-- Seçenekler: hangi sorular (tümü / sadece tekrar bak / işaretsiz), karışık sıra.
-- Sorular tek tek gösterilir, cevap gizli; "Cevabı göster" → "Bildim / Bilemedim".
-- Bilemediklerin "Tekrar bak", bildiklerin "Anladım" olarak işaretlenir.
-- Sonunda özet: kaç doğru, kaç yanlış, yanlışları tekrar çalış butonu.
-- Görüntülü sorularda görsel de gösterilir.
-
 ## 5. Dışa aktarma (PDF / Word)
 - Bir bölümü ya da bütün dersi indirme.
 - İçerik: başlıklar, sorular, cevaplar (formül, tablo, kod düzgün), soruların görselleri.

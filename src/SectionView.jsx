@@ -24,7 +24,9 @@ import {
   Image as ImageIcon,
   RotateCcw,
   CircleCheck,
+  GraduationCap,
 } from 'lucide-react';
+import StudyMode from './Study.jsx';
 import {
   db,
   addSection,
@@ -82,6 +84,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
   const [renaming, setRenaming] = useState(false);
   const [addingSub, setAddingSub] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [studying, setStudying] = useState(false);
   const fileRef = useRef(null);
 
   const uploadPdf = async (file) => {
@@ -176,6 +179,11 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
               </button>
             )
           )}
+          {countAll(section.id, tree, qaCounts) > 0 && (
+            <button className="btn ghost sm study-btn" title="Bu bölümdeki (alt bölümler dahil) sorularla kendini dene" onClick={() => setStudying(true)}>
+              <GraduationCap size={15} /> Çalış
+            </button>
+          )}
           <button className="icon-btn" title="Yeniden adlandır" onClick={() => setRenaming(true)}>
             <Pencil size={17} />
           </button>
@@ -195,6 +203,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
           uploadPdf(f);
         }}
       />
+      {studying && <StudyMode section={section} tree={tree} onClose={() => setStudying(false)} />}
     </div>
   );
 

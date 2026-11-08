@@ -6,8 +6,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // Yeni sürüm yayınlanınca uygulama kendiliğinden güncellenir
-      registerType: 'autoUpdate',
+      // Güncelleme src/updater.js'te yönetilir: yeni sürüm hazır olunca, yarım kalan
+      // bir form yoksa kendiliğinden yüklenir, varsa "Yenile" bildirimi gösterilir.
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Ders Defteri',

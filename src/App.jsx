@@ -5,6 +5,7 @@ import { db, ROOT } from './db.js';
 import Sidebar from './Sidebar.jsx';
 import SectionView from './SectionView.jsx';
 import { UIHost } from './ui.jsx';
+import SearchModal from './Search.jsx';
 
 function usePersistentState(key, initial) {
   const [value, setValue] = useState(() => {
@@ -33,6 +34,21 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addingCourse, setAddingCourse] = useState(false);
   const [collapsed, setCollapsed] = usePersistentState('sidebar-collapsed', false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  // Aramadan gelinince açılacak soru / gidilecek PDF sayfası
+  const [focus, setFocus] = useState(null);
+
+  // Ctrl+K (ya da Cmd+K) ile arama
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -95,6 +111,7 @@ export default function App() {
   }, [selected, tree]);
 
   const select = (id) => {
+    setFocus(null);
     setSelectedId(id);
     setSidebarOpen(false);
     window.scrollTo?.(0, 0);
@@ -128,6 +145,7 @@ export default function App() {
         addingCourse={addingCourse}
         setAddingCourse={setAddingCourse}
         onCollapse={() => setCollapsed(true)}
+        onOpenSearch={() => setSearchOpen(true)}
       />
       {collapsed && (
         <button className="expand-btn icon-btn" title="Menüyü göster" onClick={() => setCollapsed(false)}>
@@ -152,11 +170,21 @@ export default function App() {
             qaCounts={qaCounts}
             onSelect={select}
             onExpand={(id) => toggleExpanded(id, true)}
+            focus={focus?.sectionId === selected.id ? focus : null}
           />
         ) : (
           <Welcome hasCourses={(tree.children.get(ROOT) || []).length > 0} onAddCourse={startAddCourse} />
         )}
       </main>
+      {searchOpen && (
+        <SearchModal
+          onClose={() => setSearchOpen(false)}
+          onGo={(r) => {
+            select(r.sectionId);
+            setFocus({ sectionId: r.sectionId, qaId: r.kind === 'qa' ? r.id : null, page: r.page || null, key: Date.now() });
+          }}
+        />
+      )}
       <UIHost />
     </div>
   );

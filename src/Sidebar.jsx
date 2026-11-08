@@ -15,7 +15,10 @@ import {
   Upload,
   MonitorDown,
   PanelLeftClose,
+  Search,
+  RefreshCw,
 } from 'lucide-react';
+import { useUpdateReady, applyUpdate } from './updater.js';
 import { db, ROOT, addSection,renameSection, deleteSection, collectSubtree, moveItem, exportAll, importAll } from './db.js';
 import InlineInput from './InlineInput.jsx';
 import { useInstallPrompt } from './install.js';
@@ -43,10 +46,11 @@ function totalCount(id, tree, qaCounts) {
   return n;
 }
 
-export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect, onToggle, theme, onToggleTheme, addingCourse, setAddingCourse, onCollapse }) {
+export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect, onToggle, theme, onToggleTheme, addingCourse, setAddingCourse, onCollapse, onOpenSearch }) {
   // editing: { type: 'add', parentId } | { type: 'rename', id }
   const [editing, setEditing] = useState(null);
   const { canInstall, install } = useInstallPrompt();
+  const updateReady = useUpdateReady();
   const roots = tree.children.get(ROOT) || [];
 
   const handleAdd = async (parentId, name) => {
@@ -78,6 +82,12 @@ export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect
         </span>
       </div>
 
+      <button className="search-trigger" onClick={onOpenSearch} title="Ara (Ctrl+K)">
+        <Search size={15} />
+        <span>Ara…</span>
+        <kbd>Ctrl K</kbd>
+      </button>
+
       <div className="sidebar-label">
         <span>Dersler</span>
         <button className="icon-btn sm" title="Yeni ders" onClick={() => setAddingCourse(true)}>
@@ -105,6 +115,11 @@ export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect
         )}
       </nav>
 
+      {updateReady && (
+        <button className="update-banner" onClick={applyUpdate} title="Yeni sürümü yükle">
+          <RefreshCw size={14} /> Yeni sürüm hazır · <b>Yenile</b>
+        </button>
+      )}
       <div className="sidebar-foot">
         <Backup />
         <button className="icon-btn" onClick={onToggleTheme} title={theme === 'dark' ? 'Açık temaya geç' : 'Koyu temaya geç'}>

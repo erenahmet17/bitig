@@ -71,7 +71,7 @@ const writeLS = (k, v) => {
 
 const formatSize = (b) => (b > 1024 * 1024 ? (b / 1024 / 1024).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB');
 
-export default function SectionView({ section, path, subsections, tree, qaCounts, onSelect, onExpand }) {
+export default function SectionView({ section, path, subsections, tree, qaCounts, onSelect, onExpand, focus }) {
   const qas = useLiveQuery(() => db.qas.where('sectionId').equals(section.id).sortBy('order'), [section.id]);
   // undefined: yükleniyor, null: PDF yok
   const pdf = useLiveQuery(async () => (await db.pdfs.where('sectionId').equals(section.id).first()) || null, [section.id]);
@@ -251,7 +251,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
           </div>
         )}
         {pdf.data ? (
-          <PdfWorkspace pdf={pdf} qas={qas || []} annotations={annotations} sectionId={section.id} />
+          <PdfWorkspace pdf={pdf} qas={qas || []} annotations={annotations} sectionId={section.id} focus={focus} />
         ) : (
           <div className="pdf-missing">
             <FileX size={28} />
@@ -274,6 +274,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
       <QAPanel
         sectionId={section.id}
         qas={qas}
+        focus={focus}
         extraActions={
           !addingSub && (
             <button className="btn ghost sm" onClick={() => setAddingSub(true)}>
@@ -304,11 +305,16 @@ function DropOverlay() {
 }
 
 // ---------------- PDF + sorular yan yana ----------------
-function PdfWorkspace({ pdf, qas, annotations, sectionId }) {
+function PdfWorkspace({ pdf, qas, annotations, sectionId, focus }) {
   const [page, setPageState] = useState(() => readLS('page:' + pdf.id, 1));
   const [split, setSplit] = useState(() => readLS('split', 0.6));
   const [askDraft, setAskDraft] = useState(null); // { question, key }
   const splitRef = useRef(null);
+
+  // Aramadan bir sayfaya gidilmesi istendiyse
+  useEffect(() => {
+    if (focus?.page) setPage(focus.page);
+  }, [focus?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setPage = useCallback(
     (p) =>
@@ -375,6 +381,7 @@ function PdfWorkspace({ pdf, qas, annotations, sectionId }) {
           pageCount={pdf.pageCount}
           askDraft={askDraft}
           clearAskDraft={() => setAskDraft(null)}
+          focus={focus}
         />
       </div>
     </div>
@@ -382,7 +389,7 @@ function PdfWorkspace({ pdf, qas, annotations, sectionId }) {
 }
 
 // ---------------- Soru listesi (iki modda da kullanılır) ----------------
-function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, clearAskDraft, extraActions, emptyExtra }) {
+function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, clearAskDraft, extraActions, emptyExtra, focus }) {
   const [openIds, setOpenIds] = useState(() => new Set());
   const [editingId, setEditingId] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -395,6 +402,24 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
       setAdding(true);
     }
   }, [askDraft]);
+
+  // Aramadan gelindiyse: soruyu aç, ekrana kaydır, kısa süre vurgula
+  const handledFocus = useRef(null);
+  useEffect(() => {
+    if (!focus?.qaId || !qas || handledFocus.current === focus.key) return;
+    const qa = qas.find((q) => q.id === focus.qaId);
+    if (!qa) return;
+    handledFocus.current = focus.key;
+    if (pdfMode) setFilter(qa.page ? 'page' : 'all');
+    setOpenIds((s) => new Set(s).add(qa.id));
+    setTimeout(() => {
+      const el = document.querySelector(`[data-qa="${qa.id}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.classList.add('flash');
+      setTimeout(() => el.classList.remove('flash'), 1600);
+    }, 120);
+  }, [focus, qas, pdfMode]);
 
   const toggle = (id) =>
     setOpenIds((s) => {
@@ -583,7 +608,7 @@ function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, 
   };
 
   return (
-    <article className={'qa' + (open ? ' open' : '')}>
+    <article className={"qa" + (open ? " open" : "")} data-qa={qa.id}>
       <button className="qa-question" onClick={onToggle} aria-expanded={open}>
         <span className="qa-num">{index}</span>
         <span className="qa-q-text">

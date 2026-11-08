@@ -6,6 +6,7 @@ import './styles.css';
 import './pdf.css';
 import App from './App.jsx';
 import { requestPersistentStorage } from './install.js';
+import './updater.js';
 
 requestPersistentStorage();
 

@@ -26,6 +26,7 @@ import {
   CircleCheck,
   GraduationCap,
   Download,
+  GripVertical,
 } from 'lucide-react';
 import StudyMode from './Study.jsx';
 import ExportDialog from './export/ExportDialog.jsx';
@@ -41,6 +42,7 @@ import {
   removeSectionPdf,
   restorePdfData,
   setQAStatus,
+  reorderQA,
 } from './db.js';
 import { confirmDeleteSection } from './Sidebar.jsx';
 import InlineInput from './InlineInput.jsx';
@@ -486,6 +488,48 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
     return [...m.entries()].sort((a, b) => (a[0] || 1e9) - (b[0] || 1e9)).map(([k, items]) => ({ key: k, page: k, items }));
   }, [visible, pdfMode, filter]);
 
+  // Sürükle-bırak ile sıralama
+  const [dragId, setDragId] = useState(null);
+  const [dropAt, setDropAt] = useState(null); // { id, after }
+  const canDrag = !editingId && (visible?.length || 0) > 1;
+  const dndFor = (qa) => ({
+    dragging: dragId === qa.id,
+    dropPos: dropAt?.id === qa.id ? (dropAt.after ? 'after' : 'before') : null,
+    onHandleDragStart: (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('application/x-qa', qa.id);
+      const card = e.currentTarget.closest('.qa');
+      if (card) e.dataTransfer.setDragImage(card, 24, 22);
+      setTimeout(() => setDragId(qa.id), 0);
+    },
+    onDragEnd: () => {
+      setDragId(null);
+      setDropAt(null);
+    },
+    onDragOver: (e) => {
+      if (!dragId || dragId === qa.id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const r = e.currentTarget.getBoundingClientRect();
+      const after = e.clientY > r.top + r.height / 2;
+      if (dropAt?.id !== qa.id || dropAt.after !== after) setDropAt({ id: qa.id, after });
+    },
+    onDrop: async (e) => {
+      e.preventDefault();
+      const from = dragId;
+      const r = e.currentTarget.getBoundingClientRect();
+      const after = e.clientY > r.top + r.height / 2;
+      setDragId(null);
+      setDropAt(null);
+      if (!from || from === qa.id) return;
+      const src = qas.find((q) => q.id === from);
+      // PDF "Tümü" görünümünde başka sayfanın grubuna bırakıldıysa sayfası da değişir
+      const newPage = pdfMode && filter === 'all' && (src?.page || null) !== (qa.page || null) ? qa.page || null : undefined;
+      await reorderQA(from, qa.id, after, newPage);
+      if (newPage !== undefined) toast(newPage ? `Soru ${newPage}. sayfaya taşındı` : 'Sorunun sayfası kaldırıldı');
+    },
+  });
+
   const allOpen = visible?.length > 0 && visible.every((q) => openIds.has(q.id));
 
   const startAdding = () => {
@@ -535,6 +579,7 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
         }}
         onMove={(d) => moveItem('qas', qa.id, d)}
         onStatus={(s) => setQAStatus(qa.id, qa.status === s ? null : s)}
+        dnd={canDrag ? dndFor(qa) : null}
       />
     );
 
@@ -665,7 +710,7 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
   );
 }
 
-function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, onEdit, onDelete, onMove, onStatus }) {
+function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, onEdit, onDelete, onMove, onStatus, dnd }) {
   const [copied, setCopied] = useState(false);
   const [zoomed, setZoomed] = useState(false);
   const imgUrl = useObjectURL(open ? qa.image : null);
@@ -678,7 +723,17 @@ function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, 
   };
 
   return (
-    <article className={'qa' + (open ? ' open' : '') + (qa.status ? ' st-' + qa.status : '')} data-qa={qa.id}>
+    <article
+      className={'qa' + (open ? ' open' : '') + (qa.status ? ' st-' + qa.status : '') + (dnd?.dragging ? ' dragging' : '') + (dnd?.dropPos ? ' drop-' + dnd.dropPos : '')}
+      data-qa={qa.id}
+      onDragOver={dnd?.onDragOver}
+      onDrop={dnd?.onDrop}
+    >
+      {dnd && (
+        <span className="qa-grip" draggable onDragStart={dnd.onHandleDragStart} onDragEnd={dnd.onDragEnd} title="Sürükleyerek sırala">
+          <GripVertical size={14} />
+        </span>
+      )}
       <div className="qa-status" onClick={(e) => e.stopPropagation()}>
         <button
           className={'st-btn review' + (qa.status === 'review' ? ' on' : '')}

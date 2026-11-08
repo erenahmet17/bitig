@@ -92,6 +92,46 @@ export async function moveItem(table, id, direction) {
   });
 }
 
+// Listeyi verilen sıraya göre 1..n olarak yeniden numaralar (sadece değişenleri yazar)
+async function writeOrder(table, list, extra = {}) {
+  await Promise.all(
+    list.map((x, i) => {
+      const changes = { ...(extra[x.id] || {}) };
+      if (x.order !== i + 1) changes.order = i + 1;
+      return Object.keys(changes).length ? db[table].update(x.id, changes) : null;
+    })
+  );
+}
+
+// Sürükle-bırak: soruyu aynı bölümdeki başka bir sorunun önüne/arkasına koyar.
+// page verilirse (PDF'te başka sayfanın grubuna bırakıldıysa) sorunun sayfası da değişir.
+export async function reorderQA(id, targetId, after, page) {
+  await db.transaction('rw', db.qas, async () => {
+    const item = await db.qas.get(id);
+    if (!item) return;
+    const list = (await db.qas.where('sectionId').equals(item.sectionId).sortBy('order')).filter((q) => q.id !== id);
+    let idx = list.findIndex((q) => q.id === targetId);
+    idx = idx < 0 ? list.length : idx + (after ? 1 : 0);
+    list.splice(idx, 0, item);
+    await writeOrder('qas', list, page !== undefined ? { [id]: { page } } : {});
+  });
+}
+
+// Sürükle-bırak: bölümü yeni üst bölüme taşır; targetId verilirse onun önüne/arkasına, yoksa en sona.
+export async function moveSection(id, parentId, targetId = null, after = false) {
+  const { ids } = await collectSubtree(id);
+  if (ids.includes(parentId)) return false; // kendi altına taşınamaz
+  await db.transaction('rw', db.sections, async () => {
+    const item = await db.sections.get(id);
+    const list = (await db.sections.where('parentId').equals(parentId).sortBy('order')).filter((s) => s.id !== id);
+    let idx = targetId ? list.findIndex((s) => s.id === targetId) : -1;
+    idx = idx < 0 ? list.length : idx + (after ? 1 : 0);
+    list.splice(idx, 0, item);
+    await writeOrder('sections', list, item.parentId !== parentId ? { [id]: { parentId } } : {});
+  });
+  return true;
+}
+
 // ---------------- Soru-cevaplar ----------------
 // image: soruya eklenmiş ekran görüntüsü (Blob) ya da null
 export async function addQA(sectionId, question, answer, page = null, image = null) {

@@ -20,7 +20,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useUpdateReady, applyUpdate } from './updater.js';
-import { db, ROOT, addSection,renameSection, deleteSection, collectSubtree, moveItem, exportAll, importAll } from './db.js';
+import { db, ROOT, addSection, renameSection, deleteSection, collectSubtree, moveItem, moveSection, exportAll, importAll } from './db.js';
 import InlineInput from './InlineInput.jsx';
 import { useInstallPrompt } from './install.js';
 import { ask, confirmDanger, toast } from './ui.jsx';
@@ -62,7 +62,12 @@ export default function Sidebar({ tree, qaCounts, reviewCounts, selectedId, expa
     onSelect(id);
   };
 
-  const ctx = { tree, qaCounts, reviewCounts, selectedId, expanded, onSelect, onToggle, editing, setEditing, onAdd: handleAdd };
+  // Sürükle-bırak: dragId sürüklenen bölüm, drop { id, zone: 'before' | 'after' | 'inside' }
+  const [dragId, setDragId] = useState(null);
+  const [drop, setDrop] = useState(null);
+  const dnd = { dragId, setDragId, drop, setDrop };
+
+  const ctx = { tree, qaCounts, reviewCounts, selectedId, expanded, onSelect, onToggle, editing, setEditing, onAdd: handleAdd, dnd };
 
   return (
     <aside className="sidebar">
@@ -131,8 +136,19 @@ export default function Sidebar({ tree, qaCounts, reviewCounts, selectedId, expa
   );
 }
 
+// target, dragged bölümün kendisi ya da altındaki bir bölüm mü? (kendi içine taşınamaz)
+function isInside(targetId, draggedId, tree) {
+  let cur = tree.byId.get(targetId);
+  while (cur) {
+    if (cur.id === draggedId) return true;
+    cur = cur.parentId ? tree.byId.get(cur.parentId) : null;
+  }
+  return false;
+}
+
 function TreeNode(props) {
-  const { node, depth, tree, qaCounts, reviewCounts, selectedId, expanded, onSelect, onToggle, editing, setEditing, onAdd } = props;
+  const { node, depth, tree, qaCounts, reviewCounts, selectedId, expanded, onSelect, onToggle, editing, setEditing, onAdd, dnd } = props;
+  const expandTimer = useRef(null);
   const kids = tree.children.get(node.id) || [];
   const isOpen = expanded.includes(node.id);
   const isRenaming = editing?.type === 'rename' && editing.id === node.id;
@@ -145,8 +161,61 @@ function TreeNode(props) {
   return (
     <div>
       <div
-        className={'tree-row' + (selectedId === node.id ? ' active' : '') + (isCourse ? ' course' : '')}
+        className={
+          'tree-row' +
+          (selectedId === node.id ? ' active' : '') +
+          (isCourse ? ' course' : '') +
+          (dnd.dragId === node.id ? ' dragging' : '') +
+          (dnd.drop?.id === node.id ? ' drop-' + dnd.drop.zone : '')
+        }
         style={{ '--depth': depth }}
+        draggable={!isRenaming}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('application/x-section', node.id);
+          setTimeout(() => dnd.setDragId(node.id), 0);
+        }}
+        onDragEnd={() => {
+          clearTimeout(expandTimer.current);
+          dnd.setDragId(null);
+          dnd.setDrop(null);
+        }}
+        onDragOver={(e) => {
+          if (!dnd.dragId || isInside(node.id, dnd.dragId, tree)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const r = e.currentTarget.getBoundingClientRect();
+          const y = e.clientY - r.top;
+          const zone = y < r.height * 0.28 ? 'before' : y > r.height * 0.72 ? 'after' : 'inside';
+          if (dnd.drop?.id !== node.id || dnd.drop.zone !== zone) {
+            dnd.setDrop({ id: node.id, zone });
+            clearTimeout(expandTimer.current);
+            // Kapalı bir bölümün üstünde bekletince açılsın
+            if (zone === 'inside' && kids.length && !isOpen) expandTimer.current = setTimeout(() => onToggle(node.id, true), 650);
+          }
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) {
+            clearTimeout(expandTimer.current);
+            if (dnd.drop?.id === node.id) dnd.setDrop(null);
+          }
+        }}
+        onDrop={async (e) => {
+          e.preventDefault();
+          clearTimeout(expandTimer.current);
+          const from = dnd.dragId;
+          const zone = dnd.drop?.id === node.id ? dnd.drop.zone : null;
+          dnd.setDragId(null);
+          dnd.setDrop(null);
+          if (!from || !zone || isInside(node.id, from, tree)) return;
+          const moved = tree.byId.get(from);
+          const parentId = zone === 'inside' ? node.id : node.parentId;
+          await moveSection(from, parentId, zone === 'inside' ? null : node.id, zone === 'after');
+          if (zone === 'inside') onToggle(node.id, true);
+          if (moved && moved.parentId !== parentId)
+            toast(parentId === ROOT ? `“${moved.name}” artık bir ders` : `“${moved.name}”, “${tree.byId.get(parentId)?.name}” içine taşındı`);
+        }}
         onClick={() => !isRenaming && onSelect(node.id)}
         onDoubleClick={() => setEditing({ type: 'rename', id: node.id })}
       >

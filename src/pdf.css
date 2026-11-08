@@ -420,6 +420,8 @@ body.resizing canvas { pointer-events: none; }
   background: rgba(0, 0, 0, 0.6);
   color: #fff;
 }
+.copy-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: -4px; }
+.copy-row .hint { flex: 1; min-width: 160px; }
 .image-viewer { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, 0.75); cursor: zoom-out; }
 .image-viewer img { max-width: 100%; max-height: 100%; border-radius: 8px; background: #fff; }
 .sel-menu button.ai { color: #b9bfff; }

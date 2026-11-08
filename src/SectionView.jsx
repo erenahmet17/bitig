@@ -38,7 +38,7 @@ import {
 import { confirmDeleteSection } from './Sidebar.jsx';
 import InlineInput from './InlineInput.jsx';
 import Markdown from './Markdown.jsx';
-import { handleSmartPaste } from './paste.js';
+import { handleSmartPaste, copyQuestionWithImage } from './paste.js';
 import { confirmDanger, toast } from './ui.jsx';
 import PdfViewer, { AI_TARGETS, buildPrompt } from './pdf/PdfViewer.jsx';
 
@@ -340,7 +340,7 @@ function PdfWorkspace({ pdf, qas, annotations, sectionId }) {
 
   // Seçilen alanın görüntüsüyle bu sayfaya yeni soru formu aç
   const onAttachImage = (blob) => {
-    setAskDraft({ question: 'Bu görseldeki kısmı açıklar mısın?', image: blob, key: Date.now() });
+    setAskDraft({ question: '', image: blob, key: Date.now() });
   };
 
   const startDrag = (e) => {
@@ -548,7 +548,7 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
           key={askDraft?.key || 'new'}
           keepOpen
           initial={askDraft ? { question: askDraft.question, image: askDraft.image } : null}
-          focusAnswer={!!askDraft}
+          focusAnswer={!!askDraft && !askDraft.image}
           title={pdfMode ? 'Yeni soru-cevap' : 'Yeni soru-cevap'}
           submitLabel="Ekle"
           showPage={pdfMode}
@@ -609,6 +609,22 @@ function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, 
               <button className="icon-btn sm" title={copied ? 'Kopyalandı' : 'Cevabı kopyala'} onClick={copy}>
                 {copied ? <Check size={15} /> : <Copy size={15} />}
               </button>
+              {qa.image && (
+                <button
+                  className="icon-btn sm"
+                  title="Soruyu ve görseli kopyala (yeniden sormak için)"
+                  onClick={async () => {
+                    try {
+                      await copyQuestionWithImage(qa.question, qa.image);
+                      toast('Soru ve görsel kopyalandı');
+                    } catch {
+                      toast('Panoya kopyalanamadı', 'error');
+                    }
+                  }}
+                >
+                  <ImageIcon size={15} />
+                </button>
+              )}
               <button className="icon-btn sm" title="Düzenle" onClick={onEdit}>
                 <Pencil size={15} />
               </button>
@@ -654,6 +670,18 @@ function QAForm({ initial, title, submitLabel, onSubmit, onCancel, keepOpen, sho
     }
   };
   const canSave = question.trim() && answer.trim();
+
+  const [copiedBoth, setCopiedBoth] = useState(false);
+  const copyBoth = async () => {
+    try {
+      await copyQuestionWithImage(question.trim(), image);
+      setCopiedBoth(true);
+      setTimeout(() => setCopiedBoth(false), 1800);
+      answerRef.current?.focus({ preventScroll: true });
+    } catch {
+      toast('Panoya kopyalanamadı', 'error');
+    }
+  };
 
   // Yeni soru eklerken sayfa değişirse, sayfa alanı da onu takip etsin
   useEffect(() => {
@@ -719,7 +747,7 @@ function QAForm({ initial, title, submitLabel, onSubmit, onCancel, keepOpen, sho
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onPaste={onQuestionPaste}
-          placeholder="Yapay zekâya sorduğun soruyu yapıştır… (ekran görüntüsü de yapıştırabilirsin)"
+          placeholder={image ? 'Görselle ilgili sorunu yaz…' : 'Yapay zekâya sorduğun soruyu yapıştır… (ekran görüntüsü de yapıştırabilirsin)'}
         />
       </label>
       {imageUrl && (
@@ -728,6 +756,15 @@ function QAForm({ initial, title, submitLabel, onSubmit, onCancel, keepOpen, sho
           <button title="Görüntüyü kaldır" onClick={() => setImage(null)}>
             <X size={14} />
           </button>
+        </div>
+      )}
+      {question.trim() && (
+        <div className="copy-row">
+          <button className={'btn sm' + (image ? ' primary' : '')} onClick={copyBoth}>
+            {copiedBoth ? <Check size={15} /> : <Copy size={15} />}
+            {copiedBoth ? 'Kopyalandı' : image ? 'Soruyu ve görseli kopyala' : 'Soruyu kopyala'}
+          </button>
+          <span className="hint">{image ? 'Yapay zekâya tek seferde Ctrl+V ile yapıştır, gelen cevabı aşağıya yapıştır.' : ''}</span>
         </div>
       )}
       <div className="field">

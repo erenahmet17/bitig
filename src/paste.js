@@ -80,6 +80,39 @@ export function insertAtCursor(textarea, text) {
   }
 }
 
+const blobToDataURL = (blob) =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+
+const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+// Soruyu ve görüntüyü tek seferde panoya koyar: düz metin + görüntü + ikisini birlikte
+// içeren HTML. Yapıştırılan site hangisini destekliyorsa onu alır.
+export async function copyQuestionWithImage(text, image) {
+  const items = { 'text/plain': new Blob([text], { type: 'text/plain' }) };
+  if (image) {
+    const png = image.type === 'image/png' ? image : await toPng(image);
+    const html = `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p><img src="${await blobToDataURL(png)}">`;
+    items['text/html'] = new Blob([html], { type: 'text/html' });
+    items['image/png'] = png;
+  }
+  await navigator.clipboard.write([new ClipboardItem(items)]);
+}
+
+// Panoya sadece PNG yazılabildiği için diğer biçimleri (jpeg vb.) PNG'ye çevir
+async function toPng(blob) {
+  const bmp = await createImageBitmap(blob);
+  const c = document.createElement('canvas');
+  c.width = bmp.width;
+  c.height = bmp.height;
+  c.getContext('2d').drawImage(bmp, 0, 0);
+  return new Promise((resolve) => c.toBlob(resolve, 'image/png'));
+}
+
 export function handleSmartPaste(e) {
   const md = clipboardToMarkdown(e.clipboardData);
   if (md == null) return;

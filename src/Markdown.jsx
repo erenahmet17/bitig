@@ -6,7 +6,7 @@ import remarkBreaks from 'remark-breaks';
 // "metin\n---" ya da "metin\n===" Markdown'da metni dev bir başlığa çevirir (setext başlık).
 // LLM çıktılarında --- hep ayraç olarak kullanıldığı için bu özelliği kapatıyoruz;
 // böylece --- her zaman yatay çizgi olur.
-function remarkNoSetextHeadings() {
+export function remarkNoSetextHeadings() {
   const data = this.data();
   (data.micromarkExtensions || (data.micromarkExtensions = [])).push({ disable: { null: ['setextUnderline'] } });
 }
@@ -15,7 +15,7 @@ import rehypeHighlight from 'rehype-highlight';
 
 // LLM'ler formülleri çoğu zaman \( ... \) ve \[ ... \] ile yazar,
 // remark-math ise $ ... $ ve $$ ... $$ bekler. Kod blokları hariç dönüştürüyoruz.
-function normalizeMath(text) {
+export function normalizeMath(text) {
   const parts = text.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
   return parts
     .map((part, i) => {

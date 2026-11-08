@@ -25,8 +25,10 @@ import {
   RotateCcw,
   CircleCheck,
   GraduationCap,
+  Download,
 } from 'lucide-react';
 import StudyMode from './Study.jsx';
+import ExportDialog from './export/ExportDialog.jsx';
 import {
   db,
   addSection,
@@ -85,6 +87,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
   const [addingSub, setAddingSub] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [studying, setStudying] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const fileRef = useRef(null);
 
   const uploadPdf = async (file) => {
@@ -184,6 +187,11 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
               <GraduationCap size={15} /> Çalış
             </button>
           )}
+          {countAll(section.id, tree, qaCounts) > 0 && (
+            <button className="icon-btn" title="Dışa aktar (PDF / Word)" onClick={() => setExporting(true)}>
+              <Download size={17} />
+            </button>
+          )}
           <button className="icon-btn" title="Yeniden adlandır" onClick={() => setRenaming(true)}>
             <Pencil size={17} />
           </button>
@@ -204,6 +212,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
         }}
       />
       {studying && <StudyMode section={section} tree={tree} onClose={() => setStudying(false)} />}
+      {exporting && <ExportDialog section={section} tree={tree} count={countAll(section.id, tree, qaCounts)} onClose={() => setExporting(false)} />}
     </div>
   );
 

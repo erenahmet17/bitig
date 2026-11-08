@@ -10,6 +10,7 @@ import {
   StickyNote,
   Eraser,
   Scan,
+  MessageSquarePlus,
   PanelLeft,
   Sparkles,
   Copy,
@@ -56,12 +57,6 @@ function clampMenuX(x, scroller, half) {
   return max < min ? (min + max) / 2 : Math.max(min, Math.min(max, x));
 }
 
-// Görsel sorularda site sadece açılır; görseli kullanıcı yapıştırır
-export const AI_HOME = {
-  chatgpt: 'https://chatgpt.com/',
-  claude: 'https://claude.ai/new',
-  gemini: 'https://gemini.google.com/app',
-};
 
 export async function copyImage(blob) {
   await navigator.clipboard.write([new ClipboardItem({ [blob.type || 'image/png']: blob })]);
@@ -90,7 +85,7 @@ export function buildPrompt(text) {
   return `Ders çalışıyorum. Aşağıdaki metni bir öğrenciye anlatır gibi, gerekirse örneklerle açıkla:\n\n"${text}"`;
 }
 
-export default function PdfViewer({ pdf, page, setPage, annotations, pageBadges, onAsk, onAskImage }) {
+export default function PdfViewer({ pdf, page, setPage, annotations, pageBadges, onAsk, onAttachImage }) {
   const [doc, setDoc] = useState(null);
   const [error, setError] = useState(null);
   const [zoom, setZoom] = useState(1); // genişliğe sığdırmaya göre çarpan
@@ -205,7 +200,7 @@ export default function PdfViewer({ pdf, page, setPage, annotations, pageBadges,
             color={color}
             annotations={pageAnnotations}
             onAsk={onAsk}
-            onAskImage={onAskImage}
+            onAttachImage={onAttachImage}
           />
         )}
         {doc && (
@@ -298,7 +293,7 @@ function Thumb({ doc, n }) {
 }
 
 // ---------------- Tek sayfa görünümü ----------------
-function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk, onAskImage }) {
+function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk, onAttachImage }) {
   const scrollerRef = useRef(null);
   const pageRef = useRef(null);
   const canvasRef = useRef(null);
@@ -622,14 +617,14 @@ function PageView({ doc, pdfId, pageNum, zoom, tool, color, annotations, onAsk, 
           onCopy={async () => {
             try {
               await copyImage(snip.blob);
-              toast('Görüntü kopyalandı');
+              toast('Görüntü kopyalandı. Yapay zekâya Ctrl+V ile yapıştır.');
             } catch {
               toast('Görüntü kopyalanamadı', 'error');
             }
             setSnip(null);
           }}
-          onAsk={(target) => {
-            onAskImage(snip.blob, target);
+          onAttach={() => {
+            onAttachImage(snip.blob);
             setSnip(null);
           }}
           onClose={() => setSnip(null)}
@@ -690,18 +685,15 @@ function SelectionMenu({ selection, color, onHighlight, onCopy, onAsk }) {
   );
 }
 
-function SnipMenu({ snip, onCopy, onAsk, onClose }) {
+function SnipMenu({ snip, onCopy, onAttach, onClose }) {
   const ready = !!snip.blob;
   return (
     <div className="sel-menu" style={{ left: snip.x, top: snip.y }} onPointerDown={(e) => e.stopPropagation()}>
-      <span className="sel-label">{ready ? 'Görüntüyü sor:' : 'Hazırlanıyor…'}</span>
-      {AI_TARGETS.map((t) => (
-        <button key={t.id} disabled={!ready} onClick={() => onAsk(t.id)}>
-          {t.label}
-        </button>
-      ))}
-      <button disabled={!ready} onClick={onCopy} title="Sadece panoya kopyala">
-        <Copy size={14} /> Kopyala
+      <button className="ai" disabled={!ready} onClick={onCopy} title="Görüntüyü panoya kopyala, yapay zekâya Ctrl+V ile yapıştır">
+        <Copy size={14} /> {ready ? 'Kopyala' : 'Hazırlanıyor…'}
+      </button>
+      <button disabled={!ready} onClick={onAttach} title="Bu görüntüyle bu sayfaya yeni soru ekle">
+        <MessageSquarePlus size={14} /> Soruya ekle
       </button>
       <button onClick={onClose} title="Vazgeç">
         <X size={14} />

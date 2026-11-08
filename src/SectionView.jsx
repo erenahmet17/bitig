@@ -40,7 +40,7 @@ import InlineInput from './InlineInput.jsx';
 import Markdown from './Markdown.jsx';
 import { handleSmartPaste } from './paste.js';
 import { confirmDanger, toast } from './ui.jsx';
-import PdfViewer, { AI_TARGETS, AI_HOME, buildPrompt, copyImage } from './pdf/PdfViewer.jsx';
+import PdfViewer, { AI_TARGETS, buildPrompt } from './pdf/PdfViewer.jsx';
 
 // Blob'u <img> için geçici adrese çevirir
 function useObjectURL(blob) {
@@ -338,21 +338,8 @@ function PdfWorkspace({ pdf, qas, annotations, sectionId }) {
     setAskDraft({ question: `“${short}” kısmını açıklar mısın?`, key: Date.now() });
   };
 
-  const onAskImage = async (blob, target) => {
-    let copied = true;
-    try {
-      await copyImage(blob);
-    } catch {
-      copied = false;
-    }
-    const t = AI_TARGETS.find((x) => x.id === target);
-    if (t) window.open(AI_HOME[t.id], '_blank', 'noopener');
-    toast(
-      copied
-        ? `Görüntü kopyalandı. ${t ? t.label + '’da' : 'Yapay zekâda'} Ctrl+V ile yapıştır, cevabı buraya ekle.`
-        : 'Görüntü panoya kopyalanamadı, ama soruya eklendi.',
-      copied ? 'success' : 'error'
-    );
+  // Seçilen alanın görüntüsüyle bu sayfaya yeni soru formu aç
+  const onAttachImage = (blob) => {
     setAskDraft({ question: 'Bu görseldeki kısmı açıklar mısın?', image: blob, key: Date.now() });
   };
 
@@ -376,7 +363,7 @@ function PdfWorkspace({ pdf, qas, annotations, sectionId }) {
 
   return (
     <div className="split" ref={splitRef} style={{ gridTemplateColumns: `${split}fr 8px ${1 - split}fr` }}>
-      <PdfViewer pdf={pdf} page={page} setPage={setPage} annotations={annotations} pageBadges={pageBadges} onAsk={onAsk} onAskImage={onAskImage} />
+      <PdfViewer pdf={pdf} page={page} setPage={setPage} annotations={annotations} pageBadges={pageBadges} onAsk={onAsk} onAttachImage={onAttachImage} />
       <div className="splitter" onPointerDown={startDrag} title="Sürükleyerek genişliği ayarla" />
       <div className="qa-pane">
         <QAPanel

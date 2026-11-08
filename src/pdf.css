@@ -703,3 +703,44 @@ body.resizing canvas { pointer-events: none; }
 .tree-row.drop-after::after { bottom: -2px; left: calc(10px + var(--depth) * 18px); }
 .tree-row.drop-inside { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--text); }
 .tree-row.dragging { opacity: 0.45; }
+
+/* ================= Sohbet yapıştır ================= */
+.chat-modal { width: 100%; max-width: 860px; max-height: 88vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-lg); animation: pop 0.16s ease-out; }
+.chat-head { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+.chat-head-text { flex: 1; min-width: 0; }
+.chat-head h2 { margin: 0 0 2px; font-size: 16.5px; font-weight: 650; }
+.chat-source { display: inline-block; padding: 1px 8px; border-radius: 99px; background: var(--known-soft); color: var(--known); font-weight: 600; font-size: 12px; margin-right: 4px; }
+.chat-body { flex: 1; overflow-y: auto; padding: 16px 20px; min-height: 0; }
+.chat-paste-area { width: 100%; min-height: 300px; resize: vertical; padding: 16px; border: 2px dashed var(--border-strong); border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; font-size: 14px; line-height: 1.55; }
+.chat-paste-area:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.chat-paste-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+.chat-note { padding: 10px 14px; border-radius: 10px; background: var(--review-soft); color: var(--text-2); font-size: 13.5px; margin-bottom: 12px; line-height: 1.5; }
+.chat-blocks { display: flex; flex-direction: column; gap: 6px; }
+.chat-block { display: flex; gap: 12px; align-items: flex-start; text-align: left; width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text-2); font: inherit; font-size: 13.5px; cursor: pointer; }
+.chat-block:hover { border-color: var(--border-strong); }
+.chat-block.q { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.chat-block-tag { flex-shrink: 0; width: 52px; text-align: center; padding: 2px 0; border-radius: 6px; font-size: 11.5px; font-weight: 650; background: var(--surface-2); color: var(--muted); }
+.chat-block.q .chat-block-tag { background: var(--accent); color: var(--on-accent); }
+.chat-block-text { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5; }
+.chat-pairs { display: flex; flex-direction: column; gap: 12px; }
+.chat-pair { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+.chat-pair.off { opacity: 0.5; }
+.chat-pair.bad { border-color: var(--danger); }
+.chat-pair-top { display: flex; gap: 10px; align-items: flex-start; }
+.chat-include { display: flex; align-items: center; gap: 6px; padding-top: 5px; cursor: pointer; }
+.chat-include input { width: 16px; height: 16px; accent-color: var(--accent); }
+.chat-q, .chat-a-edit { flex: 1; width: 100%; resize: none; padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; background: var(--q-bubble); color: var(--text); font: inherit; font-size: 14.5px; font-weight: 600; line-height: 1.5; }
+.chat-q:focus, .chat-a-edit:focus { outline: none; border-color: var(--accent); }
+.chat-a { margin: 8px 0 0 58px; }
+.chat-a-edit { font-weight: 400; font-size: 13.5px; background: var(--surface-2); font-family: ui-monospace, Consolas, monospace; }
+.chat-a-view { max-height: 260px; overflow-y: auto; padding: 0 10px 4px; border-left: 2px solid var(--border); }
+.chat-a-view .md { font-size: 14px; }
+.chat-a-view .md > :first-child { margin-top: 4px; }
+.chat-a-toggle { margin-top: 6px; }
+.chat-foot { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--border); }
+.chat-foot .muted { flex: 1; }
+.chat-foot-gap { flex: 1; }
+.chat-page { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+.chat-page input { width: 64px; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); font: inherit; }
+.chat-warn { font-size: 12.5px; color: var(--danger); }
+@media (max-width: 640px) { .chat-a { margin-left: 0; } }

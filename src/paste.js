@@ -55,6 +55,16 @@ function looksLikeMarkdown(text) {
   return /```|~~~|^\s{0,3}#{1,6}\s|\*\*[^*\n]+\*\*|^\s*\|.*\|\s*$|\$\$|\\\[|\\\(|\$[^$\s][^$\n]*\$/m.test(text);
 }
 
+// HTML öğesini (ya da HTML metnini) Markdown'a çevirir
+export function htmlToMarkdown(input) {
+  const node = typeof input === 'string' ? new DOMParser().parseFromString(input, 'text/html').body : input;
+  return td
+    .turndown(node)
+    .replace(/ /g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export function clipboardToMarkdown(clipboardData) {
   const plain = clipboardData.getData('text/plain');
   const html = clipboardData.getData('text/html');

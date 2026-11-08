@@ -27,7 +27,9 @@ import {
   GraduationCap,
   Download,
   GripVertical,
+  MessagesSquare,
 } from 'lucide-react';
+import ChatImport from './ChatImport.jsx';
 import StudyMode from './Study.jsx';
 import ExportDialog from './export/ExportDialog.jsx';
 import {
@@ -416,6 +418,7 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
   const [openIds, setOpenIds] = useState(() => new Set());
   const [editingId, setEditingId] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [filter, setFilter] = useState('page'); // pdf modunda: 'page' | 'all'
   const listRef = useRef(null);
 
@@ -614,6 +617,10 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
             </button>
           )}
           {extraActions}
+          <button className="btn ghost sm" title="Bir sohbetin tamamını yapıştır, soru-cevaplara ayrılsın" onClick={() => setImporting(true)}>
+            <MessagesSquare size={15} />
+            {!pdfMode && 'Sohbet yapıştır'}
+          </button>
           {!adding && (
             <button className="btn primary sm" onClick={startAdding}>
               <Plus size={15} /> Soru ekle
@@ -700,6 +707,9 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
           }}
           onCancel={closeAdding}
         />
+      )}
+      {importing && (
+        <ChatImport sectionId={sectionId} pdfMode={pdfMode} defaultPage={pdfMode ? page : null} pageCount={pageCount} onClose={() => setImporting(false)} />
       )}
       {!adding && visible?.length > 0 && (
         <button className="add-qa-bottom" onClick={startAdding}>

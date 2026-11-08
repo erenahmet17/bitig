@@ -1,0 +1,396 @@
+/* ================= Menüyü gizleme ================= */
+.head-btns { display: flex; align-items: center; gap: 4px; }
+.app.collapsed .sidebar { display: none; }
+.expand-btn {
+  position: fixed;
+  top: 14px;
+  left: 12px;
+  z-index: 15;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.app.collapsed .section-view:not(.pdf-mode) { padding-left: 64px; }
+.app.collapsed .pdf-mode .page-head { padding-left: 44px; }
+.tb-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+.tb-spacer { flex: 1; }
+.icon-btn.on { background: var(--accent-soft); color: var(--accent-text); }
+
+/* ================= PDF ekleme ================= */
+.drop-overlay {
+  position: fixed;
+  inset: 12px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2.5px dashed var(--accent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg) 85%, var(--accent));
+  color: var(--accent-text);
+  font-weight: 600;
+  font-size: 17px;
+  pointer-events: none;
+}
+.pdf-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.pdf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  height: 30px;
+  padding: 0 10px;
+  margin-right: 2px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.pdf-chip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pdf-missing {
+  margin: 40px auto;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ================= PDF modu yerleşimi ================= */
+.section-view.pdf-mode {
+  max-width: none;
+  height: 100%;
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pdf-mode .page-head { margin-bottom: 10px; }
+.pdf-mode .breadcrumb { margin-bottom: 0; }
+.pdf-mode .section-head { min-height: 36px; }
+.pdf-mode .section-head h1 { font-size: 21px; }
+.sub-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: -2px 0 10px; }
+.sub-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.sub-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.split { flex: 1; min-height: 0; display: grid; }
+.splitter { cursor: col-resize; position: relative; }
+.splitter::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 40%;
+  height: 20%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  transition: background 0.12s;
+}
+.splitter:hover::after { background: var(--accent); top: 0; height: 100%; }
+body.resizing { cursor: col-resize; user-select: none; }
+body.resizing canvas { pointer-events: none; }
+.qa-pane { min-width: 0; overflow-y: auto; padding: 2px 6px 24px 4px; }
+.qa-pane .block { margin: 0; }
+.qa-pane .qa-toolbar { position: sticky; top: -2px; z-index: 3; background: var(--bg); padding: 2px 0 10px; margin-bottom: 4px; }
+.qa-group { display: flex; flex-direction: column; gap: 10px; }
+.qa-group + .qa-group { margin-top: 10px; }
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.group-head:hover:not(:disabled) { color: var(--accent-text); }
+.group-head:disabled { opacity: 1; }
+.seg.big button { font-size: 13px; padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; }
+.seg-count { font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--active); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.qa { position: relative; }
+.qa-page-tag {
+  position: absolute;
+  right: 42px;
+  top: 17px;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.page-jump { margin-left: auto; }
+.form-head-right { display: flex; align-items: center; gap: 6px; }
+.page-field { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+.page-field input {
+  width: 48px;
+  height: 28px;
+  text-align: center;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  outline: none;
+}
+.page-field input:focus { border-color: var(--accent); }
+
+/* ================= PDF görüntüleyici ================= */
+.pdf-viewer {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.pdf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+.tool-group { display: flex; gap: 1px; }
+.color-group { display: flex; gap: 5px; padding: 0 8px; }
+.swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transition: transform 0.1s;
+}
+.swatch:hover { transform: scale(1.12); }
+.swatch.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--c); }
+.zoom-label { min-width: 48px; height: 30px; font-size: 12.5px; font-weight: 550; color: var(--text-2); border-radius: 7px; font-variant-numeric: tabular-nums; }
+.zoom-label:hover { background: var(--hover); }
+.page-input { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; padding: 0 2px; }
+.page-input input {
+  width: 38px;
+  height: 28px;
+  text-align: center;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  outline: none;
+}
+.page-input input:focus { border-color: var(--accent); }
+.pdf-body { flex: 1; min-height: 0; display: flex; background: var(--surface-2); }
+.pdf-message { margin: auto; color: var(--muted); font-size: 14px; padding: 24px; }
+
+.thumbs {
+  width: 148px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+.thumb { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.thumb-canvas {
+  width: 100%;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px var(--border-strong);
+  transition: box-shadow 0.12s;
+}
+.thumb:hover .thumb-canvas { box-shadow: 0 0 0 2px var(--muted); }
+.thumb.on .thumb-canvas { box-shadow: 0 0 0 2.5px var(--accent); }
+.thumb-num { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.thumb.on .thumb-num { color: var(--accent-text); font-weight: 650; }
+.thumb-badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.page-scroller {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pdf-page {
+  position: relative;
+  flex-shrink: 0;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+.pdf-page canvas { display: block; }
+.pdf-page:not(.tool-select) .textLayer { pointer-events: none; user-select: none; }
+.pdf-body { position: relative; }
+.page-scroller { padding-bottom: 72px; }
+.page-nav {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+.thumbs ~ .page-scroller ~ .page-nav,
+.thumbs ~ .page-nav { left: calc(50% + 74px); }
+
+/* pdf.js metin katmanı (seçilebilir görünmez metin) */
+.textLayer {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 1;
+}
+.textLayer :is(span, br) { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) { z-index: 1; }
+.textLayer span.markedContent { top: 0; height: 0; }
+.textLayer ::selection { background: rgba(79, 91, 213, 0.3); }
+.textLayer br::selection { background: transparent; }
+.textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: 0; cursor: default; user-select: none; }
+.textLayer.selecting .endOfContent { top: 0; }
+
+/* İşaretleme katmanı */
+.ann-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; }
+.ann-layer.capture { pointer-events: all; touch-action: none; }
+.hl-rect { opacity: 0.38; mix-blend-mode: multiply; }
+.ink.marker { mix-blend-mode: multiply; }
+.erasable, .erasable * { pointer-events: visiblePainted; cursor: pointer; }
+.erasable:hover { opacity: 0.45; }
+
+.note-pin { position: absolute; z-index: 4; transform: translate(-50%, -50%); }
+.note-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px 7px 7px 2px;
+  background: var(--c);
+  color: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: transform 0.1s;
+}
+.note-icon:hover { transform: scale(1.1); }
+.note-pop {
+  position: absolute;
+  top: 32px;
+  left: -8px;
+  width: 240px;
+  padding: 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c) 30%, #fffef6);
+  border: 1px solid color-mix(in srgb, var(--c) 70%, #000);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+.note-pop.left { left: auto; right: -8px; }
+.note-pop.up { top: auto; bottom: 32px; }
+.note-pop textarea {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: 13.5px/1.5 'Inter Variable', system-ui, sans-serif;
+  color: #222;
+}
+.note-actions { display: flex; justify-content: flex-end; gap: 2px; }
+.note-actions button { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; color: #555; }
+.note-actions button:hover { background: rgba(0, 0, 0, 0.08); color: #111; }
+
+/* Seçim menüsü */
+.sel-menu {
+  position: absolute;
+  z-index: 20;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 11px;
+  background: #1f2026;
+  color: #f2f2f4;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: pop 0.12s ease-out;
+  white-space: nowrap;
+}
+.sel-menu button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.sel-menu button:hover { background: rgba(255, 255, 255, 0.12); }
+.sel-menu button.ai { color: #b9bfff; }
+.sel-menu .dot { width: 12px; height: 12px; border-radius: 50%; }
+.sel-label { font-size: 12px; color: #a3a6b0; padding: 0 6px 0 8px; }
+
+@media (max-width: 900px) {
+  .split { display: flex; flex-direction: column; overflow-y: auto; }
+  .splitter { display: none; }
+  .pdf-viewer { min-height: 70vh; }
+  .thumbs { display: none; }
+}

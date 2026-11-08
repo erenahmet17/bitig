@@ -14,16 +14,18 @@ import {
   Download,
   Upload,
   MonitorDown,
+  PanelLeftClose,
 } from 'lucide-react';
-import { ROOT, addSection, renameSection, deleteSection, collectSubtree, moveItem, exportAll, importAll } from './db.js';
+import { db, ROOT, addSection,renameSection, deleteSection, collectSubtree, moveItem, exportAll, importAll } from './db.js';
 import InlineInput from './InlineInput.jsx';
 import { useInstallPrompt } from './install.js';
 import { ask, confirmDanger, toast } from './ui.jsx';
 
 export async function confirmDeleteSection(section) {
-  const { ids, qaCount } = await collectSubtree(section.id);
+  const { ids, qaCount, pdfCount } = await collectSubtree(section.id);
   const sub = ids.length - 1;
-  const details = [sub ? `${sub} alt bölüm` : null, qaCount ? `${qaCount} soru-cevap` : null].filter(Boolean).join(' ve ');
+  const parts = [sub ? `${sub} alt bölüm` : null, qaCount ? `${qaCount} soru-cevap` : null, pdfCount ? `${pdfCount} PDF` : null].filter(Boolean);
+  const details = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' ve ' + parts.at(-1) : parts[0];
   const ok = await confirmDanger({
     title: `“${section.name}” silinsin mi?`,
     message: (details ? `İçindeki ${details} da silinecek. ` : '') + 'Bu işlem geri alınamaz.',
@@ -41,7 +43,7 @@ function totalCount(id, tree, qaCounts) {
   return n;
 }
 
-export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect, onToggle, theme, onToggleTheme, addingCourse, setAddingCourse }) {
+export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect, onToggle, theme, onToggleTheme, addingCourse, setAddingCourse, onCollapse }) {
   // editing: { type: 'add', parentId } | { type: 'rename', id }
   const [editing, setEditing] = useState(null);
   const { canInstall, install } = useInstallPrompt();
@@ -64,11 +66,16 @@ export default function Sidebar({ tree, qaCounts, selectedId, expanded, onSelect
           <img src="/favicon.svg" alt="" width="26" height="26" />
           Ders Defteri
         </span>
-        {canInstall && (
-          <button className="install-btn" onClick={install} title="Bilgisayara uygulama olarak yükle">
-            <MonitorDown size={14} /> Yükle
+        <span className="head-btns">
+          {canInstall && (
+            <button className="install-btn" onClick={install} title="Bilgisayara uygulama olarak yükle">
+              <MonitorDown size={14} /> Yükle
+            </button>
+          )}
+          <button className="icon-btn sm collapse-btn" title="Menüyü gizle" onClick={onCollapse}>
+            <PanelLeftClose size={17} />
           </button>
-        )}
+        </span>
       </div>
 
       <div className="sidebar-label">
@@ -198,7 +205,24 @@ function Backup() {
   const fileRef = useRef(null);
 
   const download = async () => {
-    const data = await exportAll();
+    let includePdfs = true;
+    const pdfs = await db.pdfs.toArray();
+    if (pdfs.length) {
+      const total = pdfs.reduce((s, p) => s + (p.size || 0), 0);
+      const mb = (total / 1024 / 1024).toFixed(1);
+      const choice = await ask({
+        title: 'PDF’ler de yedeğe eklensin mi?',
+        message: `${pdfs.length} PDF var (toplam ${mb} MB). Eklersen yedek dosyası büyür ama başka bir cihaza geçerken PDF’leri yeniden yüklemen gerekmez.`,
+        buttons: [
+          { label: 'Vazgeç', value: null },
+          { label: 'PDF’siz', value: 'no' },
+          { label: 'PDF’lerle birlikte', value: 'yes', variant: 'primary' },
+        ],
+      });
+      if (!choice) return;
+      includePdfs = choice === 'yes';
+    }
+    const data = await exportAll({ includePdfs });
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

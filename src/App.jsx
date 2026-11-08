@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { BookOpen, FolderTree, ClipboardPaste, Menu, Plus } from 'lucide-react';
+import { BookOpen, FolderTree, ClipboardPaste, Menu, Plus, PanelLeftOpen } from 'lucide-react';
 import { db, ROOT } from './db.js';
 import Sidebar from './Sidebar.jsx';
 import SectionView from './SectionView.jsx';
@@ -32,6 +32,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addingCourse, setAddingCourse] = useState(false);
+  const [collapsed, setCollapsed] = usePersistentState('sidebar-collapsed', false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -108,12 +109,13 @@ export default function App() {
   if (!sections) return null;
 
   const startAddCourse = () => {
+    setCollapsed(false);
     setAddingCourse(true);
     setSidebarOpen(true);
   };
 
   return (
-    <div className={'app' + (sidebarOpen ? ' sidebar-open' : '')}>
+    <div className={'app' + (sidebarOpen ? ' sidebar-open' : '') + (collapsed ? ' collapsed' : '')}>
       <Sidebar
         tree={tree}
         qaCounts={qaCounts}
@@ -125,7 +127,13 @@ export default function App() {
         onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
         addingCourse={addingCourse}
         setAddingCourse={setAddingCourse}
+        onCollapse={() => setCollapsed(true)}
       />
+      {collapsed && (
+        <button className="expand-btn icon-btn" title="Menüyü göster" onClick={() => setCollapsed(false)}>
+          <PanelLeftOpen size={18} />
+        </button>
+      )}
       <div className="backdrop" onClick={() => setSidebarOpen(false)} />
       <main className="main">
         <div className="mobile-bar">

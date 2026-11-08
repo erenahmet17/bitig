@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/inter';
 import 'katex/dist/katex.min.css';
 import './styles.css';
+import './pdf.css';
 import App from './App.jsx';
 import { requestPersistentStorage } from './install.js';
 

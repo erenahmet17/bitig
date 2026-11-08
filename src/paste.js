@@ -43,8 +43,14 @@ td.addRule('pre', {
   replacement: (_content, node) => {
     const code = node.querySelector('code') || node;
     const cls = (code.className || '') + ' ' + (node.className || '');
-    const lang = (cls.match(/(?:language|lang)-([\w+#-]+)/) || [])[1] || '';
-    const text = code.textContent.replace(/\n$/, '');
+    let lang = (cls.match(/(?:language|lang)-([\w+#-]+)/) || [])[1] || '';
+    // Bazı uygulamalar (ör. Antigravity) her satırı ayrı bir öğede tutar
+    const lines = node.querySelectorAll('.code-line');
+    let text;
+    if (lines.length) {
+      text = [...lines].map((l) => (l.querySelector('.line-content') || l).textContent).join('\n');
+      lang = lang || (node.querySelector('.font-sans')?.textContent.trim().toLowerCase().replace(/[^\w+#-]/g, '') ?? '');
+    } else text = code.textContent.replace(/\n$/, '');
     const fence = text.includes('```') ? '~~~~' : '```';
     return `\n\n${fence}${lang}\n${text}\n${fence}\n\n`;
   },

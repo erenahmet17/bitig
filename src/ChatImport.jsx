@@ -7,7 +7,7 @@ import { htmlToMarkdown } from './paste.js';
 import { addQA } from './db.js';
 import { toast } from './ui.jsx';
 
-const SOURCE_LABEL = { ChatGPT: 'ChatGPT', Claude: 'Claude', Gemini: 'Gemini', etiket: 'Etiketli metin' };
+const SOURCE_LABEL = { Antigravity: 'Antigravity', ChatGPT: 'ChatGPT', Claude: 'Claude', Gemini: 'Gemini', etiket: 'Etiketli metin' };
 
 function AutoTextarea({ value, onChange, ...rest }) {
   const ref = useRef(null);

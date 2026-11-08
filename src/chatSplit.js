@@ -7,6 +7,12 @@ import { htmlToMarkdown } from './paste.js';
 
 const SITES = [
   {
+    // Antigravity (Google): kısa mesajlar baloncukta, uzunlar Markdown olarak; cevaplar planner-response-text
+    name: 'Antigravity',
+    selector: '[data-testid="user-input-step"], [data-testid="planner-response-text"]',
+    role: (el) => (el.matches('[data-testid="user-input-step"]') ? 'user' : 'assistant'),
+  },
+  {
     name: 'ChatGPT',
     selector: '[data-message-author-role]',
     role: (el) => (el.getAttribute('data-message-author-role') === 'user' ? 'user' : 'assistant'),

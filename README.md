@@ -34,8 +34,8 @@ Everything runs in your browser. There is no server and no account: your notes a
 Requirements: [Node.js](https://nodejs.org) 18 or newer.
 
 ```bash
-git clone https://github.com/erenahmet17/ders-defteri.git
-cd ders-defteri
+git clone https://github.com/erenahmet17/bitig.git
+cd bitig
 npm install
 npm run dev
 ```
@@ -100,8 +100,8 @@ Her şey tarayıcında çalışır. Sunucu da hesap da yoktur: notların bilgisa
 [Node.js](https://nodejs.org) 18 veya üstü gerekir.
 
 ```bash
-git clone https://github.com/erenahmet17/ders-defteri.git
-cd ders-defteri
+git clone https://github.com/erenahmet17/bitig.git
+cd bitig
 npm install
 npm run dev
 ```

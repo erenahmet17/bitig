@@ -2,3 +2,16 @@ node_modules
 dist
 dev-dist
 .claude
+
+# Kişisel veriler repoya girmesin (yedekler, örnek sohbetler, ders PDF'leri)
+*yedek*.json
+ders-defteri-*.json
+sohbet-ornegi*.txt
+*.pdf
+*.docx
+
+# Ortam / araç dosyaları
+.env
+.env.*
+.vercel
+*.log

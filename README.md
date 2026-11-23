@@ -2,6 +2,8 @@
 
 **English** · [Türkçe](#türkçe)
 
+> A personal project: I built it for my own studying and keep using and improving it. It is not a product or a hosted service; the code is shared openly in case it is useful to someone else.
+
 A study notebook for questions and answers you collect from AI chats (ChatGPT, Claude, Gemini, Antigravity…). When one assistant hits its limit and you continue in another, your notes end up scattered across tools. Ders Defteri keeps them in one place, organized by course and section, next to the PDF you are studying.
 
 > The user interface is in **Turkish**.
@@ -54,7 +56,7 @@ React 18 · Vite · Dexie (IndexedDB) · react-markdown + KaTeX + highlight.js �
 
 ## Contributing
 
-Issues and pull requests are welcome. For larger changes, please open an issue first to talk it over.
+This is a personal project, so there is no roadmap or support promise. Issues, ideas and pull requests are still welcome; for larger changes, please open an issue first.
 
 ## License
 
@@ -63,6 +65,8 @@ Issues and pull requests are welcome. For larger changes, please open an issue f
 ---
 
 ## Türkçe
+
+> Kişisel bir proje: kendi ders çalışmam için yaptım, kullanmaya ve geliştirmeye devam ediyorum. Bir ürün ya da hizmet değil; başkasının da işine yarayabilir diye kodu açık paylaşıyorum.
 
 Yapay zekâ sohbetlerinden (ChatGPT, Claude, Gemini, Antigravity…) çıkan soru-cevaplar için bir çalışma defteri. Bir asistanın limiti dolup başka birinde devam edince notlar farklı yerlere dağılıyor. Ders Defteri hepsini ders ve bölüm bazında, çalıştığın PDF'in yanında tek bir yerde topluyor.
 
@@ -101,6 +105,10 @@ Kendi sunucunda yayınlamak için `npm run build` çalıştır. Çıkan `dist/` 
 ### Verilerin
 
 Notlar, kullandığın tarayıcının içinde durur. Başka bir tarayıcı, gizli pencere ya da site verilerini temizlemek boş bir defter demektir. Sol alttaki **Yedek al** ile ara sıra yedek al; başka bilgisayara geçerken **Geri yükle** ile aktar.
+
+### Katkı
+
+Kişisel bir proje olduğu için bir yol haritası ya da destek sözü yok; yine de issue, öneri ve pull request'ler açık.
 
 ### Lisans
 

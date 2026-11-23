@@ -2,6 +2,13 @@
   "name": "ders-defteri",
   "private": true,
   "version": "0.1.0",
+  "description": "A study notebook for Q&A collected from AI chats, organized by course and section, next to your PDFs.",
+  "license": "MIT",
+  "author": "Ahmet Eren Tutuş",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/erenahmet17/ders-defteri.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

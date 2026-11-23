@@ -1,31 +1,107 @@
 # Ders Defteri
 
-Farklı yapay zekâ sohbetlerinden çıkan soru-cevapları ders ve bölüm bazında tek yerde toplayan web uygulaması.
+**English** · [Türkçe](#türkçe)
 
-**Canlı adres:** https://ders-defteri-eren-2611.vercel.app
-Chrome veya Edge'de açıp adres çubuğundaki yükle simgesiyle (ya da uygulamadaki "⤓ Yükle" butonuyla) bilgisayara kurulabilir.
-`main` dalına gönderilen her değişiklik Vercel'de otomatik yayınlanır.
+A study notebook for questions and answers you collect from AI chats (ChatGPT, Claude, Gemini, Antigravity…). When one assistant hits its limit and you continue in another, your notes end up scattered across tools. Ders Defteri keeps them in one place, organized by course and section, next to the PDF you are studying.
 
-## Yerelde çalıştırma (geliştirme)
+> The user interface is in **Turkish**.
 
-`baslat.bat` dosyasına çift tıkla. Ya da terminalde şunu çalıştır:
+Everything runs in your browser. There is no server and no account: your notes are stored locally (IndexedDB) and never leave your computer.
 
-```
-npm install   # sadece ilk sefer
+## Features
+
+- **Courses → sections → sub-sections**, nested as deep as you like; reorder and move them by drag and drop.
+- **Chat-style Q&A cards**: only questions are shown, click one to reveal the answer. Markdown, tables, syntax-highlighted code and LaTeX formulas (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`) are rendered.
+- **Smart paste**: pasting from an AI chat keeps code blocks, tables and formulas.
+- **Paste a whole chat**: it is split into question–answer pairs automatically (ChatGPT, Claude, Gemini and Antigravity formats are recognized), with a preview to fix things before saving. Unrecognized text can be split by clicking.
+- **PDF per section**: the page you are reading on the left, that page's questions on the right. Highlight, draw, add sticky notes, erase.
+- **Ask AI from the PDF**: select text and send it to ChatGPT / Claude / Gemini, or snip a region of a page and attach it as an image to a question. One button copies the question and the image together, ready to paste into a chat.
+- **Got it / Review again** marks, with filters and per-section counts.
+- **Study mode**: questions one at a time with hidden answers; "I knew it / I didn't" updates the marks, and you can retry the missed ones.
+- **Search** across sections, questions, answers and notes (Ctrl+K).
+- **Export** a section or a whole course to **PDF** (via the print dialog) or **Word (.docx)** with native, editable equations. Optionally questions only, as a worksheet.
+- **Backup / restore** as a JSON file (optionally including the PDFs).
+- Installable as a **PWA**, works offline, updates itself; light and dark themes.
+
+## Getting started
+
+Requirements: [Node.js](https://nodejs.org) 18 or newer.
+
+```bash
+git clone https://github.com/erenahmet17/ders-defteri.git
+cd ders-defteri
+npm install
 npm run dev
 ```
 
-Ardından tarayıcıda http://localhost:5173 adresini aç.
+Then open http://localhost:5173. On Windows you can also double-click `baslat.bat`.
 
-## Özellikler
+### Hosting your own copy
 
-- Ders > bölüm > alt bölüm şeklinde sınırsız iç içe yapı
-- Soru-cevap kartları: başta sadece sorular görünür, tıklayınca cevap açılır
-- Markdown, tablo, kod renklendirme ve LaTeX formül desteği (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`)
-- Ctrl+Enter ile hızlı kaydetme; form açık kalır, art arda yapıştırabilirsin
-- Açık / koyu tema
-- JSON olarak yedek indirme ve yükleme
+```bash
+npm run build
+```
 
-## Veriler nerede?
+This produces a static site in `dist/` that can be served from any static host (Vercel, Netlify, GitHub Pages, Cloudflare Pages…). Installing it as an app (PWA) requires HTTPS, which those hosts provide.
 
-Notlar, kullandığın tarayıcının içinde (IndexedDB) saklanır. Farklı bir tarayıcıda ya da gizli sekmede açarsan notların orada görünmez. Tarayıcı verilerini temizlersen notlar silinir. Bu yüzden ara sıra **⬇ Yedeği indir** ile yedek al.
+## Your data
+
+Notes live in the browser you use them in. A different browser, a private window or clearing site data means a different, empty notebook. Use **Yedek al** (Back up) at the bottom left now and then, and **Geri yükle** (Restore) to move your notes to another computer.
+
+## Tech stack
+
+React 18 · Vite · Dexie (IndexedDB) · react-markdown + KaTeX + highlight.js · pdf.js · docx · vite-plugin-pwa · lucide icons
+
+## Contributing
+
+Issues and pull requests are welcome. For larger changes, please open an issue first to talk it over.
+
+## License
+
+[MIT](LICENSE) © 2026 Ahmet Eren Tutuş
+
+---
+
+## Türkçe
+
+Yapay zekâ sohbetlerinden (ChatGPT, Claude, Gemini, Antigravity…) çıkan soru-cevaplar için bir çalışma defteri. Bir asistanın limiti dolup başka birinde devam edince notlar farklı yerlere dağılıyor. Ders Defteri hepsini ders ve bölüm bazında, çalıştığın PDF'in yanında tek bir yerde topluyor.
+
+Her şey tarayıcında çalışır. Sunucu da hesap da yoktur: notların bilgisayarında (IndexedDB) saklanır, hiçbir yere gönderilmez.
+
+### Özellikler
+
+- **Ders → bölüm → alt bölüm**, istediğin kadar iç içe; sürükle-bırak ile sırala ve taşı.
+- **Sohbet gibi soru-cevap kartları**: sadece sorular görünür, tıklayınca cevap açılır. Markdown, tablo, renkli kod ve LaTeX formüller desteklenir.
+- **Akıllı yapıştırma**: yapay zekâ sohbetinden yapıştırınca kod blokları, tablolar ve formüller korunur.
+- **Sohbetin tamamını yapıştırma**: soru-cevaplara otomatik ayrılır (ChatGPT, Claude, Gemini ve Antigravity biçimleri tanınır); kaydetmeden önce önizlemede düzeltebilirsin. Tanınmayan metin tıklayarak ayrılabilir.
+- **Her bölüme bir PDF**: solda okuduğun sayfa, sağda o sayfanın soruları. Vurgulama, kalem, yapışkan not, silgi.
+- **PDF'ten yapay zekâya sorma**: metni seçip ChatGPT / Claude / Gemini'ye gönder ya da sayfadan bir alan seçip soruya görsel olarak ekle. Tek tuşla soru ve görsel birlikte kopyalanır.
+- **Anladım / Tekrar bak** işaretleri, filtreler ve bölüm bazında sayılar.
+- **Çalışma modu**: sorular tek tek ve cevap gizli gelir; "Bildim / Bilemedim" işaretleri günceller, bilemediklerini tekrar çalışabilirsin.
+- **Arama** (Ctrl+K): bölümler, sorular, cevaplar ve notlar.
+- **Dışa aktarma**: bir bölümü ya da bütün dersi **PDF** (yazdırma penceresiyle) veya düzenlenebilir denklemli **Word (.docx)** olarak indir. İstersen sadece sorular (çalışma kâğıdı).
+- **Yedek alma / geri yükleme** (JSON dosyası, istersen PDF'lerle birlikte).
+- **PWA** olarak kurulabilir, çevrimdışı çalışır, kendini günceller; açık ve koyu tema.
+
+### Çalıştırma
+
+[Node.js](https://nodejs.org) 18 veya üstü gerekir.
+
+```bash
+git clone https://github.com/erenahmet17/ders-defteri.git
+cd ders-defteri
+npm install
+npm run dev
+```
+
+Ardından http://localhost:5173 adresini aç. Windows'ta `baslat.bat` dosyasına çift tıklaman da yeterli.
+
+Kendi sunucunda yayınlamak için `npm run build` çalıştır. Çıkan `dist/` klasörü herhangi bir statik barındırma hizmetinde (Vercel, Netlify, GitHub Pages…) çalışır. Uygulama olarak kurmak (PWA) için HTTPS gerekir.
+
+### Verilerin
+
+Notlar, kullandığın tarayıcının içinde durur. Başka bir tarayıcı, gizli pencere ya da site verilerini temizlemek boş bir defter demektir. Sol alttaki **Yedek al** ile ara sıra yedek al; başka bilgisayara geçerken **Geri yükle** ile aktar.
+
+### Lisans
+
+[MIT](LICENSE) © 2026 Ahmet Eren Tutuş

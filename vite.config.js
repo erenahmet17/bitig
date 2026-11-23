@@ -12,8 +12,8 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Ders Defteri',
-        short_name: 'Ders Defteri',
+        name: 'Bitig',
+        short_name: 'Bitig',
         description: 'Farklı yapay zekâ sohbetlerinden çıkan soru-cevapları ders ders tek yerde topla.',
         lang: 'tr',
         start_url: '.',

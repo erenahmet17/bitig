@@ -238,7 +238,7 @@ export async function exportAll({ includePdfs = true } = {}) {
     qas.push(q.image ? { ...q, image: await blobToDataURL(q.image) } : q);
   }
   return {
-    app: 'ders-defteri',
+    app: 'ders-defteri', // eski yedeklerle uyumlu kalsın diye değişmiyor
     version: 2,
     exportedAt: new Date().toISOString(),
     sections: await db.sections.toArray(),
@@ -250,7 +250,7 @@ export async function exportAll({ includePdfs = true } = {}) {
 
 export async function importAll(data, mode) {
   if (!data || data.app !== 'ders-defteri' || !Array.isArray(data.sections) || !Array.isArray(data.qas)) {
-    throw new Error('Bu dosya bir Ders Defteri yedeği değil.');
+    throw new Error('Bu dosya bir Bitig yedeği değil.');
   }
   // PDF verisini transaction dışında çözüyoruz (fetch, IndexedDB transaction'ını kapatır)
   const pdfs = [];

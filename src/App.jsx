@@ -170,7 +170,7 @@ export default function App() {
           <button className="icon-btn" onClick={() => setSidebarOpen(true)} aria-label="Menüyü aç">
             <Menu size={20} />
           </button>
-          <span className="mobile-title">{selected ? selected.name : 'Ders Defteri'}</span>
+          <span className="mobile-title">{selected ? selected.name : 'Bitig'}</span>
         </div>
         {selected ? (
           <SectionView
@@ -211,7 +211,7 @@ function Welcome({ hasCourses, onAddCourse }) {
   return (
     <div className="welcome">
       <img className="welcome-logo" src="/favicon.svg" alt="" width="64" height="64" />
-      <h1>Ders Defteri</h1>
+      <h1>Bitig</h1>
       <p className="welcome-lead">Farklı yapay zekâ sohbetlerinden çıkan soru-cevapları ders ders, tek bir yerde topla.</p>
       <div className="steps">
         {steps.map((s, i) => (

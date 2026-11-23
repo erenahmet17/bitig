@@ -59,7 +59,7 @@ export async function collectExport(rootId, tree) {
 }
 
 export function fileName(name) {
-  return (name || 'ders-defteri').replace(/[\\/:*?"<>|]+/g, '-').trim().slice(0, 80) || 'ders-defteri';
+  return (name || 'bitig').replace(/[\\/:*?"<>|]+/g, '-').trim().slice(0, 80) || 'bitig';
 }
 
 export const formatDate = () => new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });

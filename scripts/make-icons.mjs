@@ -12,11 +12,8 @@ const render = (src, size, out) => {
 render(svg, 192, 'public/pwa-192.png');
 render(svg, 512, 'public/pwa-512.png');
 
-// Maskable: köşesiz düz arka plan + simge ortada %75 (Android'in kırpma payı için)
-const inner = svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
-const maskable = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#4f5bd5"/>
-  <g transform="translate(64 64) scale(0.75)">${inner}</g>
-</svg>`;
+// Maskable / iOS: köşeleri sistem yuvarlatır, bu yüzden zemin kenara kadar uzanır.
+// Harf zaten ortadaki güvenli alanın (%80 çaplı daire) içinde kalıyor.
+const maskable = svg.replace(/ rx="\d+"/, '');
 render(maskable, 512, 'public/pwa-maskable-512.png');
 render(maskable, 180, 'public/apple-touch-icon.png');

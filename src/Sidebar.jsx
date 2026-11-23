@@ -74,7 +74,7 @@ export default function Sidebar({ tree, qaCounts, reviewCounts, selectedId, expa
       <div className="sidebar-head">
         <span className="logo">
           <img src="/favicon.svg" alt="" width="26" height="26" />
-          Ders Defteri
+          Bitig
         </span>
         <span className="head-btns">
           {canInstall && (
@@ -317,7 +317,7 @@ function Backup() {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `ders-defteri-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `bitig-yedek-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
     toast('Yedek indirildi');

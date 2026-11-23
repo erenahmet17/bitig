@@ -279,7 +279,7 @@ export async function exportWord(data, { answers }) {
   }
 
   const doc = new Document({
-    creator: 'Ders Defteri',
+    creator: 'Bitig',
     title: data.title,
     styles: {
       default: { document: { run: { font: 'Calibri', size: 22 } } },

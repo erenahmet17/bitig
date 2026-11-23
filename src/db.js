@@ -5,7 +5,7 @@ import Dexie from 'dexie';
 // qas:         bir bölüme ait soru-cevaplar (page: bağlı olduğu PDF sayfası, yoksa null)
 // pdfs:        bir bölüme yüklenmiş PDF (her bölüme en fazla bir tane)
 // annotations: PDF sayfalarındaki vurgu, kalem çizimi ve notlar
-export const db = new Dexie('ders-defteri');
+export const db = new Dexie('bitig');
 
 db.version(1).stores({
   sections: 'id, parentId, order',
@@ -26,6 +26,30 @@ db.version(3).stores({
   pdfs: 'id, sectionId',
   annotations: 'id, pdfId, [pdfId+page]',
 });
+
+// Uygulamanın eski adıyla ('ders-defteri') oluşturulmuş veritabanı varsa içeriğini
+// yenisine bir kez taşır ve eskisini siler. Yeni veritabanında veri varsa dokunmaz.
+export async function migrateOldDb() {
+  try {
+    if (!(await Dexie.exists('ders-defteri'))) return;
+    const old = new Dexie('ders-defteri');
+    await old.open(); // mevcut şemayla açılır
+    const tables = ['sections', 'qas', 'pdfs', 'annotations'].filter((t) => old.tables.some((x) => x.name === t));
+    const data = {};
+    for (const t of tables) data[t] = await old.table(t).toArray();
+    const hasOld = tables.some((t) => data[t].length);
+    const newEmpty = (await db.sections.count()) === 0 && (await db.qas.count()) === 0;
+    if (hasOld && newEmpty) {
+      await db.transaction('rw', db.sections, db.qas, db.pdfs, db.annotations, async () => {
+        for (const t of tables) await db.table(t).bulkPut(data[t]);
+      });
+    }
+    old.close();
+    if (!hasOld || newEmpty) await Dexie.delete('ders-defteri');
+  } catch (e) {
+    console.warn('Eski veritabanı taşınamadı', e);
+  }
+}
 
 export const uid = () =>
   crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -238,7 +262,7 @@ export async function exportAll({ includePdfs = true } = {}) {
     qas.push(q.image ? { ...q, image: await blobToDataURL(q.image) } : q);
   }
   return {
-    app: 'ders-defteri', // eski yedeklerle uyumlu kalsın diye değişmiyor
+    app: 'bitig',
     version: 2,
     exportedAt: new Date().toISOString(),
     sections: await db.sections.toArray(),
@@ -249,7 +273,8 @@ export async function exportAll({ includePdfs = true } = {}) {
 }
 
 export async function importAll(data, mode) {
-  if (!data || data.app !== 'ders-defteri' || !Array.isArray(data.sections) || !Array.isArray(data.qas)) {
+  // 'ders-defteri': uygulamanın eski adıyla alınmış yedekler de yüklenebilsin
+  if (!data || !['bitig', 'ders-defteri'].includes(data.app) || !Array.isArray(data.sections) || !Array.isArray(data.qas)) {
     throw new Error('Bu dosya bir Bitig yedeği değil.');
   }
   // PDF verisini transaction dışında çözüyoruz (fetch, IndexedDB transaction'ını kapatır)

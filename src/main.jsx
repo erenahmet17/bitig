@@ -7,11 +7,15 @@ import './pdf.css';
 import App from './App.jsx';
 import { requestPersistentStorage } from './install.js';
 import './updater.js';
+import { migrateOldDb } from './db.js';
 
 requestPersistentStorage();
 
-createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
+// Eski addaki ('ders-defteri') veritabanı varsa önce taşınsın, sonra arayüz açılsın
+migrateOldDb().finally(() =>
+  createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  )
 );

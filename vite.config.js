@@ -10,7 +10,7 @@ export default defineConfig({
       // bir form yoksa kendiliğinden yüklenir, varsa "Yenile" bildirimi gösterilir.
       registerType: 'prompt',
       injectRegister: false,
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'bitig-apple-touch.png'],
       manifest: {
         name: 'Bitig',
         short_name: 'Bitig',
@@ -22,9 +22,9 @@ export default defineConfig({
         background_color: '#17181b',
         theme_color: '#4f5bd5',
         icons: [
-          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'bitig-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'bitig-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'bitig-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {

@@ -9,11 +9,11 @@ const render = (src, size, out) => {
   console.log('yazıldı', out);
 };
 
-render(svg, 192, 'public/pwa-192.png');
-render(svg, 512, 'public/pwa-512.png');
+render(svg, 192, 'public/bitig-192.png');
+render(svg, 512, 'public/bitig-512.png');
 
 // Maskable / iOS: köşeleri sistem yuvarlatır, bu yüzden zemin kenara kadar uzanır.
 // Harf zaten ortadaki güvenli alanın (%80 çaplı daire) içinde kalıyor.
 const maskable = svg.replace(/ rx="\d+"/, '');
-render(maskable, 512, 'public/pwa-maskable-512.png');
-render(maskable, 180, 'public/apple-touch-icon.png');
+render(maskable, 512, 'public/bitig-maskable-512.png');
+render(maskable, 180, 'public/bitig-apple-touch.png');

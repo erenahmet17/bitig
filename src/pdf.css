@@ -746,3 +746,13 @@ body.resizing canvas { pointer-events: none; }
 .chat-warn { font-size: 12.5px; color: var(--danger); }
 @media (max-width: 640px) { .chat-a { margin-left: 0; } }
 .chat-sample { display: flex; margin-top: 6px; margin-left: -8px; }
+
+/* ================= Analiz ettir ================= */
+.analyze-modal { max-width: 540px; }
+.analyze-size.mid { color: var(--review); }
+.analyze-size.high { color: var(--danger); }
+.analyze-preview { margin: 4px 0 14px; }
+.analyze-preview summary { cursor: pointer; font-size: 13px; color: var(--text-2); user-select: none; }
+.analyze-preview textarea { width: 100%; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text-2); font: 12px/1.5 ui-monospace, Consolas, monospace; resize: vertical; }
+.analyze-open { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.analyze-open .export-label { margin: 0 4px 0 0; }

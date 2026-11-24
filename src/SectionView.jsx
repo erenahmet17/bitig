@@ -32,6 +32,7 @@ import {
 import ChatImport from './ChatImport.jsx';
 import StudyMode from './Study.jsx';
 import ExportDialog from './export/ExportDialog.jsx';
+import AnalyzeDialog from './AnalyzeDialog.jsx';
 import {
   db,
   addSection,
@@ -92,6 +93,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
   const [dragOver, setDragOver] = useState(false);
   const [studying, setStudying] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const fileRef = useRef(null);
 
   const uploadPdf = async (file) => {
@@ -192,6 +194,11 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
             </button>
           )}
           {countAll(section.id, tree, qaCounts) > 0 && (
+            <button className="btn ghost sm" title="Tüm soru-cevapları yapay zekâya analiz ettirmek için kopyala" onClick={() => setAnalyzing(true)}>
+              <Sparkles size={15} /> Analiz
+            </button>
+          )}
+          {countAll(section.id, tree, qaCounts) > 0 && (
             <button className="icon-btn" title="Dışa aktar (PDF / Word)" onClick={() => setExporting(true)}>
               <Download size={17} />
             </button>
@@ -216,6 +223,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
         }}
       />
       {studying && <StudyMode section={section} tree={tree} onClose={() => setStudying(false)} />}
+      {analyzing && <AnalyzeDialog section={section} tree={tree} count={countAll(section.id, tree, qaCounts)} onClose={() => setAnalyzing(false)} />}
       {exporting && <ExportDialog section={section} tree={tree} count={countAll(section.id, tree, qaCounts)} onClose={() => setExporting(false)} />}
     </div>
   );

@@ -1,4 +1,5 @@
 import { db } from '../db.js';
+import { getLang } from '../i18n.js';
 
 // Dışa aktarılacak içerik: başlangıç bölümü + alt bölümleri, menüdeki sırayla.
 // Her bölüm: { id, name, depth, groups: [{ page, qas }] }; içinde de altında da soru olmayan bölümler atlanır.
@@ -62,4 +63,5 @@ export function fileName(name) {
   return (name || 'bitig').replace(/[\\/:*?"<>|]+/g, '-').trim().slice(0, 80) || 'bitig';
 }
 
-export const formatDate = () => new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+export const formatDate = () =>
+  new Date().toLocaleDateString(getLang() === 'en' ? 'en-US' : 'tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });

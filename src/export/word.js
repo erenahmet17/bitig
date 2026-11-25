@@ -25,6 +25,7 @@ import katex from 'katex';
 import { mml2omml } from 'mathml2omml';
 import { normalizeMath, remarkNoSetextHeadings } from '../Markdown.jsx';
 import { formatDate } from './collect.js';
+import { t } from '../i18n.js';
 
 const ACCENT = '4F5BD5';
 const MUTED = '80848D';
@@ -240,7 +241,7 @@ export async function exportWord(data, { answers }) {
   children.push(new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun(data.title)] }));
   children.push(
     new Paragraph({
-      children: [new TextRun({ text: `${data.total} soru · ${answers ? 'Sorular ve cevaplar' : 'Sadece sorular'} · ${formatDate()}`, color: MUTED, size: 20 })],
+      children: [new TextRun({ text: `${t('export.docCount', { n: data.total })} · ${answers ? t('export.metaQa') : t('export.metaQ')} · ${formatDate()}`, color: MUTED, size: 20 })],
       border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: ACCENT, space: 6 } },
       spacing: { after: 300 },
     })
@@ -253,7 +254,7 @@ export async function exportWord(data, { answers }) {
       if (g.page)
         children.push(
           new Paragraph({
-            children: [new TextRun({ text: `Sayfa ${g.page}`, bold: true, color: ACCENT, size: 20 })],
+            children: [new TextRun({ text: `${t('common.page')} ${g.page}`, bold: true, color: ACCENT, size: 20 })],
             spacing: { before: 200, after: 80 },
             keepNext: true,
           })
@@ -270,7 +271,7 @@ export async function exportWord(data, { answers }) {
         }
         if (answers) {
           const body = blocks(parseMd(q.answer).children, { indent: 360 });
-          children.push(...(body.length ? body : [para([new TextRun({ text: 'Cevap yok', italics: true, color: MUTED })], { indent: 360 })]));
+          children.push(...(body.length ? body : [para([new TextRun({ text: t('common.noAnswer'), italics: true, color: MUTED })], { indent: 360 })]));
         } else {
           for (let i = 0; i < 4; i++) children.push(new Paragraph({ children: [], spacing: { after: 120 } }));
         }

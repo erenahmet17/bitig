@@ -4,6 +4,7 @@ import { Sparkles, X, Copy, Check, ExternalLink } from 'lucide-react';
 import { toast } from './ui.jsx';
 import { collectExport } from './export/collect.js';
 import { GOALS, buildAnalysisText, sizeInfo } from './analyze.js';
+import { useT } from './i18n.js';
 
 // Metin uzun olduğu için adres çubuğuyla gönderilemez: panoya kopyalanır, site açılır, kullanıcı yapıştırır
 const AI_HOMES = [
@@ -20,8 +21,6 @@ const read = (k, d) => {
   }
 };
 
-const fmt = (n) => (n >= 1000 ? (n / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' bin' : String(n));
-
 function Segmented({ value, onChange, options }) {
   return (
     <div className="seg">
@@ -35,11 +34,15 @@ function Segmented({ value, onChange, options }) {
 }
 
 export default function AnalyzeDialog({ section, tree, count, onClose }) {
+  const { t, lang } = useT();
   const [goal, setGoal] = useState(() => read('analyze-goal', 'gaps'));
   const [content, setContent] = useState(() => read('analyze-content', 'qa'));
   const [data, setData] = useState(null);
   const [copied, setCopied] = useState(false);
   const hasSubs = (tree.children.get(section.id) || []).length > 0;
+
+  const fmt = (n) =>
+    n >= 1000 ? (n / 1000).toLocaleString(lang === 'en' ? 'en-US' : 'tr-TR', { maximumFractionDigits: 1 }) + t('analyze.thousand') : String(n);
 
   useEffect(() => {
     collectExport(section.id, tree).then(setData);
@@ -58,7 +61,7 @@ export default function AnalyzeDialog({ section, tree, count, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const text = useMemo(() => (data ? buildAnalysisText(data, { goal, answers: content === 'qa' }) : ''), [data, goal, content]);
+  const text = useMemo(() => (data ? buildAnalysisText(data, { goal, answers: content === 'qa', lang }) : ''), [data, goal, content, lang]);
   const size = useMemo(() => sizeInfo(text), [text]);
   const reviewCount = useMemo(
     () => (data ? data.sections.reduce((n, s) => n + s.groups.reduce((m, g) => m + g.qas.filter((q) => q.status === 'review').length, 0), 0) : 0),
@@ -72,10 +75,10 @@ export default function AnalyzeDialog({ section, tree, count, onClose }) {
       setTimeout(() => setCopied(false), 1800);
       if (target) {
         window.open(target.url, '_blank', 'noopener');
-        toast(`Kopyalandı — ${target.label}'te Ctrl+V ile yapıştır`);
-      } else toast('Kopyalandı — yapay zekâya Ctrl+V ile yapıştır');
+        toast(t('analyze.copiedOpen', { label: target.label }));
+      } else toast(t('analyze.copiedOnly'));
     } catch {
-      toast('Panoya kopyalanamadı', 'error');
+      toast(t('common.copyError'), 'error');
     }
   };
 
@@ -83,72 +86,77 @@ export default function AnalyzeDialog({ section, tree, count, onClose }) {
 
   return createPortal(
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="export-modal analyze-modal" role="dialog" aria-label="Yapay zekâya analiz ettir">
+      <div className="export-modal analyze-modal" role="dialog" aria-label={t('analyze.title')}>
         <div className="export-head">
           <span className="modal-icon">
             <Sparkles size={19} />
           </span>
           <div>
-            <h2>Yapay zekâya analiz ettir</h2>
+            <h2>{t('analyze.title')}</h2>
             <div className="muted small">
-              “{section.name}”{hasSubs ? ' ve alt bölümleri' : ''} · {count} soru{reviewCount ? ` · ${reviewCount} tekrar bak` : ''}
+              {t('analyze.meta', {
+                name: section.name,
+                subs: hasSubs ? t('analyze.andSubs') : '',
+                count,
+                review: reviewCount ? t('analyze.metaReview', { n: reviewCount }) : '',
+              })}
             </div>
           </div>
-          <button className="icon-btn sm" onClick={onClose} title="Kapat">
+          <button className="icon-btn sm" onClick={onClose} title={t('common.close')}>
             <X size={17} />
           </button>
         </div>
 
         <div className="export-field">
-          <div className="export-label">Ne istiyorsun?</div>
-          <Segmented value={goal} onChange={setGoal} options={GOALS.map((x) => ({ value: x.id, label: x.label }))} />
-          <div className="export-hint">{g.hint}</div>
+          <div className="export-label">{t('analyze.whatWant')}</div>
+          <Segmented value={goal} onChange={setGoal} options={GOALS.map((x) => ({ value: x.id, label: t(x.labelKey) }))} />
+          <div className="export-hint">{t(g.hintKey)}</div>
         </div>
 
         <div className="export-field">
-          <div className="export-label">İçerik</div>
+          <div className="export-label">{t('analyze.content')}</div>
           <Segmented
             value={content}
             onChange={setContent}
             options={[
-              { value: 'qa', label: 'Sorular + cevaplar' },
-              { value: 'q', label: 'Sadece sorular' },
+              { value: 'qa', label: t('analyze.qa') },
+              { value: 'q', label: t('analyze.qOnly') },
             ]}
           />
           <div className={'export-hint analyze-size ' + size.level}>
             {data ? (
               <>
-                ≈ {fmt(size.chars)} karakter (~{fmt(size.tokens)} token).{' '}
-                {size.level === 'mid' && 'Uzun bir metin; bazı ücretsiz sürümler kesebilir.'}
-                {size.level === 'high' && 'Çok uzun; yapay zekâ metnin hepsini okuyamayabilir. “Sadece sorular” ya da daha küçük bir bölüm dene.'}
-                {size.level !== 'ok' && content === 'qa' && ' “Sadece sorular” çok daha kısa olur.'}
+                {t('analyze.sizeLine', { chars: fmt(size.chars), tokens: fmt(size.tokens) })}
+                {size.level === 'mid' && t('analyze.sizeMid')}
+                {size.level === 'high' && t('analyze.sizeHigh')}
+                {size.level !== 'ok' && content === 'qa' && t('analyze.sizeTip')}
               </>
             ) : (
-              'Hazırlanıyor…'
+              t('analyze.preparing')
             )}
           </div>
         </div>
 
         <details className="analyze-preview">
-          <summary>Kopyalanacak metni gör</summary>
+          <summary>{t('analyze.previewSummary')}</summary>
           <textarea readOnly value={text} rows={10} />
         </details>
 
         <div className="analyze-open">
-          <span className="export-label">Kopyala ve aç:</span>
-          {AI_HOMES.map((t) => (
-            <button key={t.id} className="btn sm" disabled={!data || !count} onClick={() => copy(t)}>
-              {t.label} <ExternalLink size={13} />
+          <span className="export-label">{t('analyze.copyAndOpen')}</span>
+          {AI_HOMES.map((target) => (
+            <button key={target.id} className="btn sm" disabled={!data || !count} onClick={() => copy(target)}>
+              {target.label} <ExternalLink size={13} />
             </button>
           ))}
         </div>
 
         <div className="modal-actions">
           <button className="btn" onClick={onClose}>
-            Kapat
+            {t('common.close')}
           </button>
           <button className="btn primary" onClick={() => copy(null)} disabled={!data || !count} autoFocus>
-            {copied ? <Check size={16} /> : <Copy size={16} />} {copied ? 'Kopyalandı' : 'Kopyala'}
+            {copied ? <Check size={16} /> : <Copy size={16} />} {copied ? t('common.copied') : t('common.copy')}
           </button>
         </div>
       </div>

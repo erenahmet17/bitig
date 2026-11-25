@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Search as SearchIcon, Folder, BookOpen, MessageCircleQuestion, StickyNote, CornerDownLeft, X } from 'lucide-react';
 import { db, ROOT } from './db.js';
+import { useT } from './i18n.js';
 
 // Türkçe karakterlerden bağımsız arama: "ogrenme" yazınca "Öğrenme" de bulunur.
 // Her karakter tek karaktere dönüştüğü için konumlar orijinal metinle aynı kalır.
@@ -68,6 +69,7 @@ function Highlight({ text, words }) {
 }
 
 export default function SearchModal({ onClose, onGo }) {
+  const { t } = useT();
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef(null);
@@ -103,7 +105,7 @@ export default function SearchModal({ onClose, onGo }) {
     }
     for (const qa of data.qas) {
       if (!byId.has(qa.sectionId)) continue;
-      const title = qa.question || '(Görüntülü soru)';
+      const title = qa.question || t('common.imageQuestion');
       const body = plain(qa.answer || '');
       items.push({ kind: 'qa', id: qa.id, sectionId: qa.sectionId, page: qa.page, title, nTitle: norm(title), body, nBody: norm(body), path: pathOf(qa.sectionId) });
     }
@@ -113,7 +115,7 @@ export default function SearchModal({ onClose, onGo }) {
       items.push({ kind: 'note', id: a.id, sectionId: sid, page: a.page, title: a.text, nTitle: norm(a.text), body: '', nBody: '', path: pathOf(sid) });
     }
     return items;
-  }, [data]);
+  }, [data, t]);
 
   const words = useMemo(() => norm(q).split(/\s+/).filter(Boolean), [q]);
 
@@ -178,21 +180,21 @@ export default function SearchModal({ onClose, onGo }) {
 
   return (
     <div className="modal-backdrop search-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="search-modal" role="dialog" aria-label="Arama" onKeyDown={onKeyDown}>
+      <div className="search-modal" role="dialog" aria-label={t('search.aria')} onKeyDown={onKeyDown}>
         <div className="search-input-row">
           <SearchIcon size={18} />
-          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Derslerde, sorularda, cevaplarda ve notlarda ara…" />
+          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search.placeholder')} />
           {q && (
-            <button className="icon-btn sm" title="Temizle" onClick={() => (setQ(''), inputRef.current?.focus())}>
+            <button className="icon-btn sm" title={t('search.clear')} onClick={() => (setQ(''), inputRef.current?.focus())}>
               <X size={15} />
             </button>
           )}
         </div>
         <div className="search-results" ref={listRef}>
           {!words.length ? (
-            <div className="search-empty">Aramak istediğin kelimeyi yaz. Türkçe karakter yazmasan da bulur (ör. “ogrenme”).</div>
+            <div className="search-empty">{t('search.emptyPrompt')}</div>
           ) : results.length === 0 ? (
-            <div className="search-empty">“{q}” için sonuç bulunamadı.</div>
+            <div className="search-empty">{t('search.noResults', { q })}</div>
           ) : (
             results.map((r, i) => (
               <button
@@ -212,9 +214,9 @@ export default function SearchModal({ onClose, onGo }) {
                     </span>
                   )}
                   <span className="sr-path">
-                    {r.kind === 'note' && 'Not · '}
-                    {(r.kind === 'section' ? r.path : r.path).join(' › ') || (r.kind === 'section' ? 'Ders' : '')}
-                    {r.page ? ` · Sayfa ${r.page}` : ''}
+                    {r.kind === 'note' && t('search.notePrefix')}
+                    {r.path.join(' › ') || (r.kind === 'section' ? t('search.courseLabel') : '')}
+                    {r.page ? ` · ${t('common.page')} ${r.page}` : ''}
                   </span>
                 </span>
                 {i === active && <CornerDownLeft size={14} className="sr-enter" />}
@@ -225,15 +227,15 @@ export default function SearchModal({ onClose, onGo }) {
         <div className="search-foot">
           <span>
             <kbd>↑</kbd>
-            <kbd>↓</kbd> gezin
+            <kbd>↓</kbd> {t('search.nav')}
           </span>
           <span>
-            <kbd>Enter</kbd> aç
+            <kbd>Enter</kbd> {t('search.open')}
           </span>
           <span>
-            <kbd>Esc</kbd> kapat
+            <kbd>Esc</kbd> {t('search.close')}
           </span>
-          {results.length > 0 && <span className="sr-count">{results.length} sonuç</span>}
+          {results.length > 0 && <span className="sr-count">{t('search.resultCount', { n: results.length })}</span>}
         </div>
       </div>
     </div>

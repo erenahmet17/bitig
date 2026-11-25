@@ -6,8 +6,7 @@ import { splitChat, toPairs, splitBlocks, messagesToBlocks, blocksToPairs } from
 import { htmlToMarkdown } from './paste.js';
 import { addQA } from './db.js';
 import { toast } from './ui.jsx';
-
-const SOURCE_LABEL = { Antigravity: 'Antigravity', ChatGPT: 'ChatGPT', Claude: 'Claude', Gemini: 'Gemini', etiket: 'Etiketli metin' };
+import { useT } from './i18n.js';
 
 function AutoTextarea({ value, onChange, ...rest }) {
   const ref = useRef(null);
@@ -21,6 +20,7 @@ function AutoTextarea({ value, onChange, ...rest }) {
 }
 
 export default function ChatImport({ sectionId, pdfMode, defaultPage, pageCount, onClose }) {
+  const { t } = useT();
   const [step, setStep] = useState('paste'); // 'paste' | 'mark' | 'review'
   const [source, setSource] = useState(null);
   const [pairs, setPairs] = useState([]); // { question, answer, include, editing }
@@ -29,6 +29,8 @@ export default function ChatImport({ sectionId, pdfMode, defaultPage, pageCount,
   const [page, setPage] = useState(defaultPage || '');
   const [saving, setSaving] = useState(false);
   const [lastClip, setLastClip] = useState(null); // tanınmayan biçimi örnek olarak kaydetmek için
+
+  const sourceLabel = (s) => (s === 'etiket' ? t('chat.sourceLabel.etiket') : s);
 
   const showPairs = (list, src) => {
     setPairs(list.map((p) => ({ ...p, include: true, editing: false })));
@@ -77,10 +79,10 @@ export default function ChatImport({ sectionId, pdfMode, defaultPage, pageCount,
     try {
       const pg = pdfMode && page ? Number(page) : null;
       for (const p of included) await addQA(sectionId, p.question, p.answer, pg, null);
-      toast(`${included.length} soru-cevap eklendi`);
+      toast(t('chat.addedToast', { n: included.length }));
       onClose();
     } catch (e) {
-      toast('Kaydedilemedi: ' + e.message, 'error');
+      toast(t('chat.saveError', { msg: e.message }), 'error');
       setSaving(false);
     }
   };
@@ -94,27 +96,27 @@ export default function ChatImport({ sectionId, pdfMode, defaultPage, pageCount,
   // Tanınmayan bir biçimi geliştiriciye göndermek için panodaki ham içeriği dosyaya kaydeder
   const saveSample = () => {
     const body = `=== HTML ===
-${lastClip?.html || '(yok)'}
+${lastClip?.html || '(none)'}
 
 === TEXT ===
-${lastClip?.text || '(yok)'}
+${lastClip?.text || '(none)'}
 `;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([body], { type: 'text/plain;charset=utf-8' }));
     a.download = 'sohbet-ornegi.txt';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    toast('Örnek İndirilenler klasörüne kaydedildi');
+    toast(t('chat.sampleSaved'));
   };
 
   const markedCount = useMemo(() => blocksToPairs(blocks).length, [blocks]);
 
   return createPortal(
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && step === 'paste' && onClose()}>
-      <div className="chat-modal" role="dialog" aria-label="Sohbet yapıştır">
+      <div className="chat-modal" role="dialog" aria-label={t('chat.title')}>
         <div className="chat-head">
           {step !== 'paste' && (
-            <button className="icon-btn sm" title="Baştan" onClick={() => setStep('paste')}>
+            <button className="icon-btn sm" title={t('chat.startOver')} onClick={() => setStep('paste')}>
               <ArrowLeft size={17} />
             </button>
           )}
@@ -122,19 +124,19 @@ ${lastClip?.text || '(yok)'}
             <MessagesSquare size={19} />
           </span>
           <div className="chat-head-text">
-            <h2>Sohbet yapıştır</h2>
+            <h2>{t('chat.title')}</h2>
             <div className="muted small">
-              {step === 'paste' && 'Bir sohbetin tamamını yapıştır; soru ve cevapları ayırayım.'}
-              {step === 'mark' && 'Senin yazdığın (soru) blokları tıklayarak işaretle.'}
+              {step === 'paste' && t('chat.step.paste')}
+              {step === 'mark' && t('chat.step.mark')}
               {step === 'review' && (
                 <>
-                  {source && <span className="chat-source">{SOURCE_LABEL[source] || source} biçimi tanındı</span>} {pairs.length} soru-cevap bulundu — kontrol et, gerekirse
-                  düzelt.
+                  {source && <span className="chat-source">{t('chat.sourceRecognized', { source: sourceLabel(source) })}</span>}{' '}
+                  {t('chat.foundPairs', { n: pairs.length })}
                 </>
               )}
             </div>
           </div>
-          <button className="icon-btn sm" onClick={onClose} title="Kapat" disabled={saving}>
+          <button className="icon-btn sm" onClick={onClose} title={t('common.close')} disabled={saving}>
             <X size={17} />
           </button>
         </div>
@@ -145,7 +147,7 @@ ${lastClip?.text || '(yok)'}
               <textarea
                 className="chat-paste-area"
                 autoFocus
-                placeholder={'Sohbet sayfasında Ctrl+A ile her şeyi seç (ya da sohbeti fareyle seç), Ctrl+C ile kopyala, burada Ctrl+V yap.\n\nChatGPT, Claude, Gemini ve Antigravity otomatik tanınır. Başka bir yerden geliyorsa “Soru:” / “Cevap:” etiketli metin de olur.'}
+                placeholder={t('chat.pastePlaceholder')}
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
                 onPaste={onPaste}
@@ -153,7 +155,7 @@ ${lastClip?.text || '(yok)'}
               {typed.trim() && (
                 <div className="chat-paste-actions">
                   <button className="btn primary" onClick={() => handle('', typed)}>
-                    <Scissors size={16} /> Ayır
+                    <Scissors size={16} /> {t('chat.split')}
                   </button>
                 </div>
               )}
@@ -164,10 +166,10 @@ ${lastClip?.text || '(yok)'}
             <div className="chat-blocks">
               {!source && pairs.length === 0 && (
                 <div className="chat-note">
-                  Sohbeti otomatik ayıramadım. Sorduğun soruların olduğu blokları tıkla; aradaki bloklar cevap olur.
+                  {t('chat.manualNote')}
                   {lastClip && (
-                    <button className="btn ghost sm chat-sample" onClick={saveSample} title="Bu biçimin tanınması için panodaki içeriği dosyaya kaydeder">
-                      <FileDown size={14} /> Biçimi tanıması için örneği kaydet
+                    <button className="btn ghost sm chat-sample" onClick={saveSample} title={t('chat.saveSampleTip')}>
+                      <FileDown size={14} /> {t('chat.saveSample')}
                     </button>
                   )}
                 </div>
@@ -178,7 +180,7 @@ ${lastClip?.text || '(yok)'}
                   className={'chat-block' + (b.q ? ' q' : '')}
                   onClick={() => setBlocks((bs) => bs.map((x, j) => (j === i ? { ...x, q: !x.q } : x)))}
                 >
-                  <span className="chat-block-tag">{b.q ? 'Soru' : 'Cevap'}</span>
+                  <span className="chat-block-tag">{b.q ? t('chat.tagQ') : t('chat.tagA')}</span>
                   <span className="chat-block-text">{b.md}</span>
                 </button>
               ))}
@@ -190,28 +192,28 @@ ${lastClip?.text || '(yok)'}
               {pairs.map((p, i) => (
                 <div key={i} className={'chat-pair' + (p.include ? '' : ' off') + (p.include && (!p.question.trim() || !p.answer.trim()) ? ' bad' : '')}>
                   <div className="chat-pair-top">
-                    <label className="chat-include" title={p.include ? 'Eklenecek' : 'Eklenmeyecek'}>
+                    <label className="chat-include" title={p.include ? t('chat.includeTip') : t('chat.excludeTip')}>
                       <input type="checkbox" checked={p.include} onChange={(e) => update(i, { include: e.target.checked })} />
                       <span className="qa-num">{i + 1}</span>
                     </label>
-                    <AutoTextarea className="chat-q" value={p.question} onChange={(v) => update(i, { question: v })} placeholder="Soru (boş — yaz ya da bu çifti çıkar)" />
-                    <button className="icon-btn sm danger" title="Bu çifti sil" onClick={() => setPairs((ps) => ps.filter((_, j) => j !== i))}>
+                    <AutoTextarea className="chat-q" value={p.question} onChange={(v) => update(i, { question: v })} placeholder={t('chat.emptyQPlaceholder')} />
+                    <button className="icon-btn sm danger" title={t('chat.deletePair')} onClick={() => setPairs((ps) => ps.filter((_, j) => j !== i))}>
                       <Trash2 size={15} />
                     </button>
                   </div>
                   {p.include && (
                     <div className="chat-a">
                       {p.editing ? (
-                        <AutoTextarea className="chat-a-edit" value={p.answer} onChange={(v) => update(i, { answer: v })} placeholder="Cevap" />
+                        <AutoTextarea className="chat-a-edit" value={p.answer} onChange={(v) => update(i, { answer: v })} placeholder={t('form.answer')} />
                       ) : p.answer.trim() ? (
                         <div className="chat-a-view">
                           <Markdown>{p.answer}</Markdown>
                         </div>
                       ) : (
-                        <div className="muted small">Cevap yok</div>
+                        <div className="muted small">{t('common.noAnswer')}</div>
                       )}
                       <button className="btn ghost sm chat-a-toggle" onClick={() => update(i, { editing: !p.editing })}>
-                        {p.editing ? <Eye size={14} /> : <Pencil size={14} />} {p.editing ? 'Önizle' : 'Cevabı düzenle'}
+                        {p.editing ? <Eye size={14} /> : <Pencil size={14} />} {p.editing ? t('form.preview') : t('chat.editAnswer')}
                       </button>
                     </div>
                   )}
@@ -223,27 +225,27 @@ ${lastClip?.text || '(yok)'}
 
         {step === 'mark' && (
           <div className="chat-foot">
-            <span className="muted small">{blocks.filter((b) => b.q).length ? `${markedCount} soru-cevap olacak` : 'Henüz soru işaretlenmedi'}</span>
+            <span className="muted small">{blocks.filter((b) => b.q).length ? t('chat.willCreate', { n: markedCount }) : t('chat.noneMarked')}</span>
             <button className="btn primary" disabled={!blocks.some((b) => b.q)} onClick={() => showPairs(blocksToPairs(blocks), source)}>
-              Devam <Check size={16} />
+              {t('chat.continue')} <Check size={16} />
             </button>
           </div>
         )}
         {step === 'review' && (
           <div className="chat-foot">
-            <button className="btn ghost sm" onClick={toManual} title="Soru/cevap sınırlarını bloklar üzerinden elle düzelt">
-              <Scissors size={14} /> Elle ayır
+            <button className="btn ghost sm" onClick={toManual} title={t('chat.manualSplitTip')}>
+              <Scissors size={14} /> {t('chat.manualSplit')}
             </button>
             {pdfMode && (
               <label className="chat-page">
-                Sayfa
+                {t('common.page')}
                 <input type="number" min={1} max={pageCount || undefined} value={page} onChange={(e) => setPage(e.target.value)} placeholder="—" />
               </label>
             )}
             <span className="chat-foot-gap" />
-            {invalid > 0 && <span className="chat-warn">{invalid} çiftte soru ya da cevap boş</span>}
+            {invalid > 0 && <span className="chat-warn">{t('chat.invalidWarn', { n: invalid })}</span>}
             <button className="btn primary" disabled={!included.length || invalid > 0 || saving} onClick={save}>
-              {included.length} soru-cevabı ekle
+              {t('chat.addCount', { n: included.length })}
             </button>
           </div>
         )}

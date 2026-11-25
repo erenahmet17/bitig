@@ -1,5 +1,6 @@
 import Dexie from 'dexie';
 import { blobToDataURL } from './utils.js';
+import { t } from './i18n.js';
 
 // Veriler tarayıcının IndexedDB'sinde tutulur.
 // sections:    dersler (parentId = '') ve onların altındaki bölümler (iç içe)
@@ -189,6 +190,16 @@ export function deleteQA(id) {
   return db.qas.delete(id);
 }
 
+// Soruyu başka bir bölüme taşır (hedef bölümde farklı PDF olabileceği için sayfa bağlantısı temizlenir)
+export async function moveQAToSection(id, targetSectionId) {
+  await db.transaction('rw', db.qas, async () => {
+    const item = await db.qas.get(id);
+    if (!item || item.sectionId === targetSectionId) return;
+    const order = await nextOrder('qas', 'sectionId', targetSectionId);
+    await db.qas.update(id, { sectionId: targetSectionId, order, page: null, updatedAt: Date.now() });
+  });
+}
+
 // ---------------- PDF ----------------
 export async function setSectionPdf(sectionId, file) {
   const existing = await db.pdfs.where('sectionId').equals(sectionId).first();
@@ -232,8 +243,13 @@ export async function removeSectionPdf(sectionId) {
 // Koordinatlar sayfa boyutuna göre 0-1 arasında saklanır (yakınlaştırmadan bağımsız).
 export async function addAnnotation(pdfId, page, ann) {
   const id = uid();
-  await db.annotations.add({ id, pdfId, page, createdAt: Date.now(), ...ann });
-  return id;
+  const record = { id, pdfId, page, createdAt: Date.now(), ...ann };
+  await db.annotations.add(record);
+  return record;
+}
+
+export function restoreAnnotation(ann) {
+  return db.annotations.put(ann);
 }
 
 export function updateAnnotation(id, changes) {
@@ -268,7 +284,7 @@ export async function exportAll({ includePdfs = true } = {}) {
 export async function importAll(data, mode) {
   // 'ders-defteri': uygulamanın eski adıyla alınmış yedekler de yüklenebilsin
   if (!data || !['bitig', 'ders-defteri'].includes(data.app) || !Array.isArray(data.sections) || !Array.isArray(data.qas)) {
-    throw new Error('Bu dosya bir Bitig yedeği değil.');
+    throw new Error(t('backup.invalidFile'));
   }
   // PDF verisini transaction dışında çözüyoruz (fetch, IndexedDB transaction'ını kapatır)
   const pdfs = [];

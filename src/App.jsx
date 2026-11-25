@@ -6,6 +6,7 @@ import Sidebar from './Sidebar.jsx';
 import SectionView from './SectionView.jsx';
 import { UIHost } from './ui.jsx';
 import SearchModal from './Search.jsx';
+import { useT } from './i18n.js';
 
 function usePersistentState(key, initial) {
   const [value, setValue] = useState(() => {
@@ -25,12 +26,17 @@ function usePersistentState(key, initial) {
 }
 
 export default function App() {
+  const { t } = useT();
   const sections = useLiveQuery(() => db.sections.toArray(), []);
   // Her bölümdeki soru sayısı (sadece indeks okunur, hızlıdır)
   const qaSectionIds = useLiveQuery(() => db.qas.orderBy('sectionId').keys(), []);
-  // "Tekrar bak" işaretli soruların bölümleri
+  // "Tekrar bak" ve "Anladım" işaretli soruların bölümleri
   const reviewSectionIds = useLiveQuery(
     async () => (await db.qas.where('status').equals('review').toArray()).map((q) => q.sectionId),
+    []
+  );
+  const knownSectionIds = useLiveQuery(
+    async () => (await db.qas.where('status').equals('known').toArray()).map((q) => q.sectionId),
     []
   );
   const [selectedId, setSelectedId] = usePersistentState('selected', null);
@@ -86,6 +92,12 @@ export default function App() {
     for (const id of reviewSectionIds || []) m.set(id, (m.get(id) || 0) + 1);
     return m;
   }, [reviewSectionIds]);
+
+  const knownCounts = useMemo(() => {
+    const m = new Map();
+    for (const id of knownSectionIds || []) m.set(id, (m.get(id) || 0) + 1);
+    return m;
+  }, [knownSectionIds]);
 
   const selected = selectedId ? tree.byId.get(selectedId) : null;
 
@@ -153,21 +165,21 @@ export default function App() {
         onSelect={select}
         onToggle={toggleExpanded}
         theme={theme}
-        onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+        onToggleTheme={() => setTheme((th) => (th === 'dark' ? 'light' : 'dark'))}
         addingCourse={addingCourse}
         setAddingCourse={setAddingCourse}
         onCollapse={() => setCollapsed(true)}
         onOpenSearch={() => setSearchOpen(true)}
       />
       {collapsed && (
-        <button className="expand-btn icon-btn" title="Menüyü göster" onClick={() => setCollapsed(false)}>
+        <button className="expand-btn icon-btn" title={t('app.showMenu')} onClick={() => setCollapsed(false)}>
           <PanelLeftOpen size={18} />
         </button>
       )}
       <div className="backdrop" onClick={() => setSidebarOpen(false)} />
       <main className="main">
         <div className="mobile-bar">
-          <button className="icon-btn" onClick={() => setSidebarOpen(true)} aria-label="Menüyü aç">
+          <button className="icon-btn" onClick={() => setSidebarOpen(true)} aria-label={t('app.openMenu')}>
             <Menu size={20} />
           </button>
           <span className="mobile-title">{selected ? selected.name : 'Bitig'}</span>
@@ -180,6 +192,8 @@ export default function App() {
             subsections={tree.children.get(selected.id) || []}
             tree={tree}
             qaCounts={qaCounts}
+            knownCounts={knownCounts}
+            reviewCounts={reviewCounts}
             onSelect={select}
             onExpand={(id) => toggleExpanded(id, true)}
             focus={focus?.sectionId === selected.id ? focus : null}
@@ -203,16 +217,17 @@ export default function App() {
 }
 
 function Welcome({ hasCourses, onAddCourse }) {
+  const { t } = useT();
   const steps = [
-    { icon: BookOpen, title: 'Ders oluştur', text: 'Her ders için ayrı bir defter aç.' },
-    { icon: FolderTree, title: 'Bölümlere ayır', text: 'PDF 1, PDF 2… istediğin kadar iç içe bölüm.' },
-    { icon: ClipboardPaste, title: 'Soru-cevap yapıştır', text: 'Hangi yapay zekâdan gelirse gelsin, hepsi tek yerde.' },
+    { icon: BookOpen, title: t('welcome.step1.title'), text: t('welcome.step1.text') },
+    { icon: FolderTree, title: t('welcome.step2.title'), text: t('welcome.step2.text') },
+    { icon: ClipboardPaste, title: t('welcome.step3.title'), text: t('welcome.step3.text') },
   ];
   return (
     <div className="welcome">
       <img className="welcome-logo" src="/favicon.svg" alt="" width="64" height="64" />
       <h1>Bitig</h1>
-      <p className="welcome-lead">Farklı yapay zekâ sohbetlerinden çıkan soru-cevapları ders ders, tek bir yerde topla.</p>
+      <p className="welcome-lead">{t('welcome.lead')}</p>
       <div className="steps">
         {steps.map((s, i) => (
           <div className="step" key={i}>
@@ -227,13 +242,13 @@ function Welcome({ hasCourses, onAddCourse }) {
         ))}
       </div>
       {hasCourses ? (
-        <p className="muted">Başlamak için soldan bir ders ya da bölüm seç.</p>
+        <p className="muted">{t('welcome.pickCourse')}</p>
       ) : (
         <button className="btn primary lg" onClick={onAddCourse}>
-          <Plus size={18} /> İlk dersini oluştur
+          <Plus size={18} /> {t('welcome.firstCourse')}
         </button>
       )}
-      <p className="muted small welcome-note">Notların bu cihazda saklanır. Ara sıra sol alttan yedek almayı unutma.</p>
+      <p className="muted small welcome-note">{t('welcome.note')}</p>
     </div>
   );
 }

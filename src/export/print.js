@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import Markdown from '../Markdown.jsx';
 import { blobToDataURL } from '../utils.js';
 import { formatDate } from './collect.js';
+import { getLang, t } from '../i18n.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -33,6 +34,7 @@ const PRINT_CSS = `
   .ex-a .md .katex-display { overflow: visible; }
   .ex-blank { margin: 6px 0 0 30px; height: 34mm; border: 1px dashed #d3d2cc; border-radius: 8px; }
   .ex-empty { color: #80848d; font-style: italic; }
+  .code-bar { display: none !important; }
 `;
 
 async function buildHtml(data, { answers }) {
@@ -40,7 +42,7 @@ async function buildHtml(data, { answers }) {
   const parts = [];
   parts.push(
     `<header class="ex-cover">${data.path.length ? `<div class="ex-crumb">${esc(data.path.join(' › '))}</div>` : ''}<h1>${esc(data.title)}</h1>` +
-      `<div class="ex-meta">${data.total} soru · ${answers ? 'Sorular ve cevaplar' : 'Sadece sorular'} · ${esc(formatDate())}</div></header>`
+      `<div class="ex-meta">${esc(t('export.docCount', { n: data.total }))} · ${esc(answers ? t('export.metaQa') : t('export.metaQ'))} · ${esc(formatDate())}</div></header>`
   );
   for (const s of data.sections) {
     if (s.depth > 0) {
@@ -48,12 +50,12 @@ async function buildHtml(data, { answers }) {
       parts.push(`<${h} class="ex-sec">${esc(s.name)}</${h}>`);
     }
     for (const g of s.groups) {
-      if (g.page) parts.push(`<div class="ex-page">Sayfa ${g.page}</div>`);
+      if (g.page) parts.push(`<div class="ex-page">${esc(t('common.page'))} ${g.page}</div>`);
       for (const q of g.qas) {
         n++;
         const img = q.image ? `<img class="ex-img" src="${await blobToDataURL(q.image)}" alt="">` : '';
         const body = answers
-          ? `<div class="ex-a">${q.answer?.trim() ? renderToStaticMarkup(createElement(Markdown, null, q.answer)) : '<p class="ex-empty">Cevap yok</p>'}</div>`
+          ? `<div class="ex-a">${q.answer?.trim() ? renderToStaticMarkup(createElement(Markdown, { copyable: false }, q.answer)) : `<p class="ex-empty">${esc(t('common.noAnswer'))}</p>`}</div>`
           : '<div class="ex-blank"></div>';
         parts.push(
           `<section class="ex-qa"><div class="ex-q"><span class="ex-num">${n}.</span><div class="ex-q-text">${esc(q.question)}${img}</div></div>${body}</section>`
@@ -82,7 +84,7 @@ export async function exportPdf(data, opts) {
   const doc = iframe.contentDocument;
   doc.open();
   doc.write(
-    `<!doctype html><html lang="tr" data-theme="light"><head><meta charset="utf-8"><title>${esc(data.title)}</title>${collectStyles()}<style>${PRINT_CSS}</style></head>` +
+    `<!doctype html><html lang="${getLang()}" data-theme="light"><head><meta charset="utf-8"><title>${esc(data.title)}</title>${collectStyles()}<style>${PRINT_CSS}</style></head>` +
       `<body><main class="ex-doc">${html}</main></body></html>`
   );
   doc.close();

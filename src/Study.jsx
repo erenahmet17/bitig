@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { X, GraduationCap, Shuffle, RotateCcw, CircleCheck, Eye, Trophy, Repeat, FileText } from 'lucide-react';
+import { X, GraduationCap, Shuffle, Clock, ListOrdered, RotateCcw, CircleCheck, Eye, Trophy, Repeat, FileText } from 'lucide-react';
 import { db, setQAStatus } from './db.js';
 import Markdown from './Markdown.jsx';
 import { useObjectURL } from './utils.js';
+import { useT } from './i18n.js';
 
 function shuffle(list) {
   const a = [...list];
@@ -13,6 +14,20 @@ function shuffle(list) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// Akıllı sıra: hiç bakılmamışlar ve en uzun süredir çalışılmamışlar önce gelir.
+// Aynı zamandaki (ör. hiç bakılmamış) sorularda "Tekrar bak" > işaretsiz > "Anladım" önceliği uygulanır.
+const STATUS_RANK = { review: 0, known: 2 };
+function sortSmart(list) {
+  return [...list].sort((a, b) => {
+    const ta = a.statusAt || 0;
+    const tb = b.statusAt || 0;
+    if (ta !== tb) return ta - tb;
+    const ra = STATUS_RANK[a.status] ?? 1;
+    const rb = STATUS_RANK[b.status] ?? 1;
+    return ra - rb;
+  });
 }
 
 // Başlangıç bölümü ve altındakiler, menüdeki sırayla; her biri için başlangıca göre yol
@@ -27,13 +42,31 @@ function sectionsInOrder(rootId, tree) {
 }
 
 const FILTERS = [
-  { id: 'all', label: 'Tümü', test: () => true },
-  { id: 'review', label: 'Tekrar bak', test: (q) => q.status === 'review' },
-  { id: 'none', label: 'İşaretsiz', test: (q) => !q.status },
-  { id: 'known', label: 'Anladım', test: (q) => q.status === 'known' },
+  { id: 'all', labelKey: 'qa.status.all', test: () => true },
+  { id: 'review', labelKey: 'qa.status.review', test: (q) => q.status === 'review' },
+  { id: 'none', labelKey: 'qa.status.none', test: (q) => !q.status },
+  { id: 'known', labelKey: 'qa.status.known', test: (q) => q.status === 'known' },
 ];
 
+const ORDERS = [
+  { id: 'smart', icon: Clock, labelKey: 'study.order.smart', hintKey: 'study.order.smartHint' },
+  { id: 'shuffle', icon: Shuffle, labelKey: 'study.order.shuffle', hintKey: 'study.order.shuffleHint' },
+  { id: 'sequential', icon: ListOrdered, labelKey: 'study.order.sequential', hintKey: 'study.order.sequentialHint' },
+];
+
+function readInitialOrder() {
+  try {
+    const saved = localStorage.getItem('study-order');
+    if (saved && ORDERS.some((o) => o.id === saved)) return saved;
+    const legacy = localStorage.getItem('study-mixed');
+    if (legacy === '0') return 'sequential';
+    if (legacy === '1') return 'shuffle';
+  } catch {}
+  return 'smart';
+}
+
 export default function StudyMode({ section, tree, onClose }) {
+  const { t } = useT();
   const order = useMemo(() => sectionsInOrder(section.id, tree), [section.id, tree]);
   const all = useLiveQuery(async () => {
     const ids = order.map((s) => s.id);
@@ -45,7 +78,7 @@ export default function StudyMode({ section, tree, onClose }) {
   }, [order]);
 
   const [filter, setFilter] = useState(() => localStorage.getItem('study-filter') || 'all');
-  const [mixed, setMixed] = useState(() => localStorage.getItem('study-mixed') !== '0');
+  const [orderMode, setOrderMode] = useState(readInitialOrder);
   // null: ayar ekranı; dizi: o anki tur
   const [deck, setDeck] = useState(null);
   const [idx, setIdx] = useState(0);
@@ -55,9 +88,9 @@ export default function StudyMode({ section, tree, onClose }) {
   useEffect(() => {
     try {
       localStorage.setItem('study-filter', filter);
-      localStorage.setItem('study-mixed', mixed ? '1' : '0');
+      localStorage.setItem('study-order', orderMode);
     } catch {}
-  }, [filter, mixed]);
+  }, [filter, orderMode]);
 
   const counts = useMemo(() => {
     const m = {};
@@ -70,7 +103,8 @@ export default function StudyMode({ section, tree, onClose }) {
   const activeFilter = all && !counts[validFilter] && counts.all > 0 ? 'all' : validFilter;
 
   const start = (list) => {
-    setDeck(mixed ? shuffle(list) : list);
+    const ordered = orderMode === 'shuffle' ? shuffle(list) : orderMode === 'smart' ? sortSmart(list) : [...list];
+    setDeck(ordered);
     setIdx(0);
     setRevealed(false);
     setResults([]);
@@ -122,7 +156,7 @@ export default function StudyMode({ section, tree, onClose }) {
   }, []);
 
   return createPortal(
-    <div className="study" role="dialog" aria-label="Çalışma modu">
+    <div className="study" role="dialog" aria-label={t('study.aria')}>
       <div className="study-top">
         <span className="study-title">
           <GraduationCap size={18} /> {section.name}
@@ -137,7 +171,7 @@ export default function StudyMode({ section, tree, onClose }) {
             </span>
           </div>
         )}
-        <button className="icon-btn" title="Kapat (Esc)" onClick={onClose}>
+        <button className="icon-btn" title={t('study.closeTip')} onClick={onClose}>
           <X size={19} />
         </button>
       </div>
@@ -148,8 +182,8 @@ export default function StudyMode({ section, tree, onClose }) {
             counts={counts}
             filter={activeFilter}
             setFilter={setFilter}
-            mixed={mixed}
-            setMixed={setMixed}
+            orderMode={orderMode}
+            setOrderMode={setOrderMode}
             onStart={() => start(all.filter(FILTERS.find((f) => f.id === activeFilter).test))}
           />
         )}
@@ -168,41 +202,52 @@ export default function StudyMode({ section, tree, onClose }) {
   );
 }
 
-function Setup({ counts, filter, setFilter, mixed, setMixed, onStart }) {
+function Setup({ counts, filter, setFilter, orderMode, setOrderMode, onStart }) {
+  const { t } = useT();
   const n = counts[filter];
+  const curOrder = ORDERS.find((o) => o.id === orderMode) || ORDERS[0];
   return (
     <div className="study-setup">
       <div className="study-setup-icon">
         <GraduationCap size={26} />
       </div>
-      <h2>Kendini dene</h2>
+      <h2>{t('study.heading')}</h2>
       <p className="muted">
-        Sorular tek tek gelir, cevap gizlidir. Bildiklerin <b className="t-known">Anladım</b>, bilemediklerin <b className="t-review">Tekrar bak</b> olarak
-        işaretlenir.
+        {t('study.descBefore')}
+        <b className="t-known">{t('qa.status.known')}</b>
+        {t('study.descMid')}
+        <b className="t-review">{t('qa.status.review')}</b>
+        {t('study.descAfter')}
       </p>
-      <div className="study-label">Hangi sorular?</div>
+      <div className="study-label">{t('study.whichQuestions')}</div>
       <div className="study-options">
         {FILTERS.map((f) => (
           <button key={f.id} className={'study-opt' + (filter === f.id ? ' on' : '') + ' f-' + f.id} onClick={() => setFilter(f.id)} disabled={!counts[f.id]}>
             {f.id === 'review' && <RotateCcw size={14} />}
             {f.id === 'known' && <CircleCheck size={14} />}
-            {f.label}
+            {t(f.labelKey)}
             <span className="study-opt-n">{counts[f.id]}</span>
           </button>
         ))}
       </div>
-      <label className="study-check">
-        <input type="checkbox" checked={mixed} onChange={(e) => setMixed(e.target.checked)} />
-        <Shuffle size={15} /> Karışık sıra
-      </label>
+      <div className="study-label">{t('study.orderLabel')}</div>
+      <div className="study-order-seg">
+        {ORDERS.map((o) => (
+          <button key={o.id} type="button" className={'study-order-opt' + (orderMode === o.id ? ' on' : '')} onClick={() => setOrderMode(o.id)}>
+            <o.icon size={14} /> {t(o.labelKey)}
+          </button>
+        ))}
+      </div>
+      <div className="study-order-hint muted small">{t(curOrder.hintKey)}</div>
       <button className="btn primary lg study-start" disabled={!n} onClick={onStart} autoFocus>
-        {n ? `Başla · ${n} soru` : 'Bu seçimde soru yok'}
+        {n ? t('study.startCount', { n }) : t('study.emptyChoice')}
       </button>
     </div>
   );
 }
 
 function Card({ qa, revealed, onReveal, onAnswer }) {
+  const { t } = useT();
   const imgUrl = useObjectURL(qa.image);
   const [zoomed, setZoomed] = useState(false);
   return (
@@ -212,31 +257,31 @@ function Card({ qa, revealed, onReveal, onAnswer }) {
           {qa.trail?.length > 0 && <span>{qa.trail.join(' › ')}</span>}
           {qa.page && (
             <span className="study-page">
-              <FileText size={12} /> s. {qa.page}
+              <FileText size={12} /> {t('common.pageShort')} {qa.page}
             </span>
           )}
         </div>
       )}
       <div className="study-card">
         {qa.question && <div className="study-q">{qa.question}</div>}
-        {imgUrl && <img className="study-img" src={imgUrl} alt="Soruya eklenen görüntü" onClick={() => setZoomed(true)} />}
+        {imgUrl && <img className="study-img" src={imgUrl} alt={t('qa.imageAlt')} onClick={() => setZoomed(true)} />}
         {revealed ? (
           <div className="study-a">
             <Markdown>{qa.answer}</Markdown>
           </div>
         ) : (
           <button className="btn lg study-reveal" onClick={onReveal}>
-            <Eye size={17} /> Cevabı göster <kbd>Boşluk</kbd>
+            <Eye size={17} /> {t('study.reveal')} <kbd>{t('study.spaceKey')}</kbd>
           </button>
         )}
       </div>
       {revealed && (
         <div className="study-judge">
           <button className="btn lg judge-no" onClick={() => onAnswer(false)}>
-            <RotateCcw size={17} /> Bilemedim <kbd>1</kbd>
+            <RotateCcw size={17} /> {t('study.didntKnow')} <kbd>1</kbd>
           </button>
           <button className="btn lg judge-yes" onClick={() => onAnswer(true)}>
-            <CircleCheck size={17} /> Bildim <kbd>2</kbd>
+            <CircleCheck size={17} /> {t('study.knew')} <kbd>2</kbd>
           </button>
         </div>
       )}
@@ -250,6 +295,7 @@ function Card({ qa, revealed, onReveal, onAnswer }) {
 }
 
 function Summary({ results, onRetryWrong, onRestart, onClose }) {
+  const { t, lang } = useT();
   const ok = results.filter((r) => r.ok).length;
   const wrong = results.length - ok;
   const pct = results.length ? Math.round((ok / results.length) * 100) : 0;
@@ -258,14 +304,14 @@ function Summary({ results, onRetryWrong, onRestart, onClose }) {
       <div className="study-setup-icon">
         <Trophy size={26} />
       </div>
-      <h2>Tur bitti</h2>
-      <div className="study-score">%{pct}</div>
+      <h2>{t('study.doneTitle')}</h2>
+      <div className="study-score">{lang === 'tr' ? `%${pct}` : `${pct}%`}</div>
       <div className="study-tally">
         <span className="t-known">
-          <CircleCheck size={16} /> {ok} bildim
+          <CircleCheck size={16} /> {t('study.knewCount', { n: ok })}
         </span>
         <span className="t-review">
-          <RotateCcw size={16} /> {wrong} bilemedim
+          <RotateCcw size={16} /> {t('study.wrongCount', { n: wrong })}
         </span>
       </div>
       {wrong > 0 && (
@@ -273,21 +319,21 @@ function Summary({ results, onRetryWrong, onRestart, onClose }) {
           {results
             .filter((r) => !r.ok)
             .map((r, i) => (
-              <li key={i}>{r.qa.question || '(Görüntülü soru)'}</li>
+              <li key={i}>{r.qa.question || t('common.imageQuestion')}</li>
             ))}
         </ul>
       )}
       <div className="study-actions">
         {wrong > 0 && (
           <button className="btn primary lg" onClick={onRetryWrong} autoFocus>
-            <Repeat size={17} /> Bilemediklerimi tekrar çalış
+            <Repeat size={17} /> {t('study.retryWrong')}
           </button>
         )}
         <button className="btn lg" onClick={onRestart}>
-          Yeni tur
+          {t('study.newRound')}
         </button>
         <button className="btn ghost lg" onClick={onClose}>
-          Kapat
+          {t('common.close')}
         </button>
       </div>
     </div>

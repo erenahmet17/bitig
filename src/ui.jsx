@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { t } from './i18n.js';
 
 // Tarayıcının çirkin confirm/alert pencereleri yerine uygulama içi diyalog ve bildirimler.
 // Kullanım: await ask({ title, message, buttons: [{ label, value, variant }] })
@@ -11,14 +12,14 @@ export function ask(options) {
   return new Promise((resolve) => pushDialog?.({ ...options, resolve }));
 }
 
-export function confirmDanger({ title, message, confirmLabel = 'Sil' }) {
+export function confirmDanger({ title, message, confirmLabel }) {
   return ask({
     title,
     message,
     tone: 'danger',
     buttons: [
-      { label: 'Vazgeç', value: false },
-      { label: confirmLabel, value: true, variant: 'danger' },
+      { label: t('common.cancel'), value: false },
+      { label: confirmLabel || t('common.delete'), value: true, variant: 'danger' },
     ],
   });
 }

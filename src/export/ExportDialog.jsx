@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Download, FileText, FileType2, X, Loader2 } from 'lucide-react';
 import { toast } from '../ui.jsx';
 import { collectExport, fileName } from './collect.js';
+import { useT } from '../i18n.js';
 
 const read = (k, d) => {
   try {
@@ -26,6 +27,7 @@ function Segmented({ value, onChange, options }) {
 }
 
 export default function ExportDialog({ section, tree, count, onClose }) {
+  const { t } = useT();
   const [content, setContent] = useState(() => read('export-content', 'qa'));
   const [format, setFormat] = useState(() => read('export-format', 'pdf'));
   const [busy, setBusy] = useState(false);
@@ -58,54 +60,52 @@ export default function ExportDialog({ section, tree, count, onClose }) {
         const blob = await exportWord(data, opts);
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = fileName(data.title) + (opts.answers ? '' : ' - sorular') + '.docx';
+        a.download = fileName(data.title) + (opts.answers ? '' : t('export.questionsSuffix')) + '.docx';
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        toast('Word dosyası indirildi');
+        toast(t('export.wordDownloaded'));
         onClose();
       }
     } catch (e) {
       console.error(e);
-      toast('Dışa aktarılamadı: ' + e.message, 'error');
+      toast(t('export.error', { msg: e.message }), 'error');
       setBusy(false);
     }
   };
 
   return createPortal(
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <div className="export-modal" role="dialog" aria-label="Dışa aktar">
+      <div className="export-modal" role="dialog" aria-label={t('export.title')}>
         <div className="export-head">
           <span className="modal-icon">
             <Download size={19} />
           </span>
           <div>
-            <h2>Dışa aktar</h2>
+            <h2>{t('export.title')}</h2>
             <div className="muted small">
-              “{section.name}”{hasSubs ? ' ve alt bölümleri' : ''} · {count} soru
+              {t('export.meta', { name: section.name, subs: hasSubs ? t('analyze.andSubs') : '', count })}
             </div>
           </div>
-          <button className="icon-btn sm" onClick={onClose} title="Kapat" disabled={busy}>
+          <button className="icon-btn sm" onClick={onClose} title={t('common.close')} disabled={busy}>
             <X size={17} />
           </button>
         </div>
 
         <div className="export-field">
-          <div className="export-label">İçerik</div>
+          <div className="export-label">{t('export.content')}</div>
           <Segmented
             value={content}
             onChange={setContent}
             options={[
-              { value: 'qa', label: 'Sorular + cevaplar' },
-              { value: 'q', label: 'Sadece sorular' },
+              { value: 'qa', label: t('export.qa') },
+              { value: 'q', label: t('export.qOnly') },
             ]}
           />
-          <div className="export-hint">
-            {content === 'qa' ? 'Formüller, tablolar, kodlar ve soru görselleri dahil.' : 'Çalışma kâğıdı gibi: her sorunun altında cevap için boşluk bırakılır.'}
-          </div>
+          <div className="export-hint">{content === 'qa' ? t('export.qaHint') : t('export.qOnlyHint')}</div>
         </div>
 
         <div className="export-field">
-          <div className="export-label">Biçim</div>
+          <div className="export-label">{t('export.format')}</div>
           <Segmented
             value={format}
             onChange={setFormat}
@@ -114,19 +114,15 @@ export default function ExportDialog({ section, tree, count, onClose }) {
               { value: 'docx', label: 'Word (.docx)', icon: FileType2 },
             ]}
           />
-          <div className="export-hint">
-            {format === 'pdf'
-              ? 'Yazdırma penceresi açılır; “Hedef” olarak “PDF olarak kaydet”i seç.'
-              : 'Formüller Word’de düzenlenebilir denklem olarak gelir.'}
-          </div>
+          <div className="export-hint">{format === 'pdf' ? t('export.pdfHint') : t('export.docxHint')}</div>
         </div>
 
         <div className="modal-actions">
           <button className="btn" onClick={onClose} disabled={busy}>
-            Vazgeç
+            {t('common.cancel')}
           </button>
           <button className="btn primary" onClick={run} disabled={busy || !count} autoFocus>
-            {busy ? <Loader2 size={16} className="spin" /> : <Download size={16} />} {busy ? 'Hazırlanıyor…' : 'Dışa aktar'}
+            {busy ? <Loader2 size={16} className="spin" /> : <Download size={16} />} {busy ? t('export.preparing') : t('export.title')}
           </button>
         </div>
       </div>

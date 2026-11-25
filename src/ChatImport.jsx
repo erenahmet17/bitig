@@ -145,7 +145,7 @@ ${lastClip?.text || '(yok)'}
               <textarea
                 className="chat-paste-area"
                 autoFocus
-                placeholder={'Sohbet sayfasında Ctrl+A ile her şeyi seç (ya da sohbeti fareyle seç), Ctrl+C ile kopyala, burada Ctrl+V yap.\n\nChatGPT, Claude ve Gemini otomatik tanınır. Başka bir yerden geliyorsa “Soru:” / “Cevap:” etiketli metin de olur.'}
+                placeholder={'Sohbet sayfasında Ctrl+A ile her şeyi seç (ya da sohbeti fareyle seç), Ctrl+C ile kopyala, burada Ctrl+V yap.\n\nChatGPT, Claude, Gemini ve Antigravity otomatik tanınır. Başka bir yerden geliyorsa “Soru:” / “Cevap:” etiketli metin de olur.'}
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
                 onPaste={onPaste}

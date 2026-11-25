@@ -1,5 +1,6 @@
 import TurndownService from 'turndown';
 import { tables, strikethrough } from 'turndown-plugin-gfm';
+import { blobToDataURL } from './utils.js';
 
 // Yapay zekâ sitesinden metin seçilip kopyalanınca panoya düz metin + HTML gelir.
 // Düz metinde kod bloğu (```), tablo ve formül işaretleri kaybolur; HTML'de ise durur.
@@ -96,26 +97,22 @@ export function insertAtCursor(textarea, text) {
   }
 }
 
-const blobToDataURL = (blob) =>
-  new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(blob);
-  });
-
 const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 // Soruyu ve görüntüyü tek seferde panoya koyar: düz metin + görüntü + ikisini birlikte
 // içeren HTML. Yapıştırılan site hangisini destekliyorsa onu alır.
 export async function copyQuestionWithImage(text, image) {
-  const items = { 'text/plain': new Blob([text], { type: 'text/plain' }) };
+  const items = {};
+  if (text) items['text/plain'] = new Blob([text], { type: 'text/plain' });
   if (image) {
     const png = image.type === 'image/png' ? image : await toPng(image);
-    const html = `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p><img src="${await blobToDataURL(png)}">`;
-    items['text/html'] = new Blob([html], { type: 'text/html' });
+    if (text) {
+      const html = `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p><img src="${await blobToDataURL(png)}">`;
+      items['text/html'] = new Blob([html], { type: 'text/html' });
+    }
     items['image/png'] = png;
   }
+  if (!Object.keys(items).length) return;
   await navigator.clipboard.write([new ClipboardItem(items)]);
 }
 

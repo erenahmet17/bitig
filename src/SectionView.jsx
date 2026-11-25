@@ -40,7 +40,6 @@ import {
   addQA,
   updateQA,
   deleteQA,
-  moveItem,
   setSectionPdf,
   removeSectionPdf,
   restorePdfData,
@@ -53,13 +52,8 @@ import Markdown from './Markdown.jsx';
 import { handleSmartPaste, copyQuestionWithImage } from './paste.js';
 import { confirmDanger, toast } from './ui.jsx';
 import PdfViewer, { AI_TARGETS, buildPrompt } from './pdf/PdfViewer.jsx';
-
-// Blob'u <img> için geçici adrese çevirir
-function useObjectURL(blob) {
-  const url = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
-  useEffect(() => () => url && URL.revokeObjectURL(url), [url]);
-  return url;
-}
+import { evictPdf } from './pdf/pdfjs.js';
+import { useObjectURL } from './utils.js';
 
 function countAll(id, tree, qaCounts) {
   let n = qaCounts.get(id) || 0;
@@ -95,6 +89,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
   const [exporting, setExporting] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const fileRef = useRef(null);
+  const totalQas = useMemo(() => countAll(section.id, tree, qaCounts), [section.id, tree, qaCounts]);
 
   const uploadPdf = async (file) => {
     if (!file) return;
@@ -102,6 +97,7 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
       toast('Sadece PDF dosyası yüklenebilir', 'error');
       return;
     }
+    const oldPdfId = pdf?.id;
     if (pdf?.data) {
       const ok = await confirmDanger({
         title: 'PDF değiştirilsin mi?',
@@ -111,7 +107,10 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
       if (!ok) return;
     }
     if (pdf && !pdf.data) await restorePdfData(pdf.id, file);
-    else await setSectionPdf(section.id, file);
+    else {
+      await setSectionPdf(section.id, file);
+      evictPdf(oldPdfId);
+    }
     toast('PDF eklendi');
   };
 
@@ -122,7 +121,9 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
       confirmLabel: 'Kaldır',
     });
     if (ok) {
+      const oldPdfId = pdf?.id;
       await removeSectionPdf(section.id);
+      evictPdf(oldPdfId);
       toast('PDF kaldırıldı');
     }
   };
@@ -188,17 +189,17 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
               </button>
             )
           )}
-          {countAll(section.id, tree, qaCounts) > 0 && (
+          {totalQas > 0 && (
             <button className="btn ghost sm study-btn" title="Bu bölümdeki (alt bölümler dahil) sorularla kendini dene" onClick={() => setStudying(true)}>
               <GraduationCap size={15} /> Çalış
             </button>
           )}
-          {countAll(section.id, tree, qaCounts) > 0 && (
+          {totalQas > 0 && (
             <button className="btn ghost sm" title="Tüm soru-cevapları yapay zekâya analiz ettirmek için kopyala" onClick={() => setAnalyzing(true)}>
               <Sparkles size={15} /> Analiz
             </button>
           )}
-          {countAll(section.id, tree, qaCounts) > 0 && (
+          {totalQas > 0 && (
             <button className="icon-btn" title="Dışa aktar (PDF / Word)" onClick={() => setExporting(true)}>
               <Download size={17} />
             </button>
@@ -223,8 +224,8 @@ export default function SectionView({ section, path, subsections, tree, qaCounts
         }}
       />
       {studying && <StudyMode section={section} tree={tree} onClose={() => setStudying(false)} />}
-      {analyzing && <AnalyzeDialog section={section} tree={tree} count={countAll(section.id, tree, qaCounts)} onClose={() => setAnalyzing(false)} />}
-      {exporting && <ExportDialog section={section} tree={tree} count={countAll(section.id, tree, qaCounts)} onClose={() => setExporting(false)} />}
+      {analyzing && <AnalyzeDialog section={section} tree={tree} count={totalQas} onClose={() => setAnalyzing(false)} />}
+      {exporting && <ExportDialog section={section} tree={tree} count={totalQas} onClose={() => setExporting(false)} />}
     </div>
   );
 
@@ -588,7 +589,10 @@ function QAPanel({ sectionId, qas, pdfMode, page, setPage, pageCount, askDraft, 
             toast('Silindi');
           }
         }}
-        onMove={(d) => moveItem('qas', qa.id, d)}
+        onMove={(d) => {
+          const target = list[i + d];
+          if (target) reorderQA(qa.id, target.id, d > 0);
+        }}
         onStatus={(s) => setQAStatus(qa.id, qa.status === s ? null : s)}
         dnd={canDrag ? dndFor(qa) : null}
       />
@@ -771,7 +775,7 @@ function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, 
       <button className="qa-question" onClick={onToggle} aria-expanded={open}>
         <span className="qa-num">{index}</span>
         <span className="qa-q-text">
-          {qa.question}
+          {qa.question || (!imgUrl && <span className="muted">(Görüntülü soru)</span>)}
           {imgUrl && <img className="qa-image" src={imgUrl} alt="Soruya eklenen görüntü" onClick={(e) => (e.stopPropagation(), setZoomed(true))} />}
         </span>
         {qa.image && !open && <ImageIcon size={16} className="qa-image-badge" aria-label="Görüntülü soru" />}
@@ -796,11 +800,11 @@ function QAItem({ qa, index, isFirst, isLast, open, showPage, onJump, onToggle, 
               {qa.image && (
                 <button
                   className="icon-btn sm"
-                  title="Soruyu ve görseli kopyala (yeniden sormak için)"
+                  title={qa.question ? 'Soruyu ve görseli kopyala (yeniden sormak için)' : 'Görseli kopyala (yeniden sormak için)'}
                   onClick={async () => {
                     try {
                       await copyQuestionWithImage(qa.question, qa.image);
-                      toast('Soru ve görsel kopyalandı');
+                      toast(qa.question ? 'Soru ve görsel kopyalandı' : 'Görsel kopyalandı');
                     } catch {
                       toast('Panoya kopyalanamadı', 'error');
                     }
@@ -853,7 +857,7 @@ function QAForm({ initial, title, submitLabel, onSubmit, onCancel, keepOpen, sho
       toast('Görüntü soruya eklendi');
     }
   };
-  const canSave = question.trim() && answer.trim();
+  const canSave = (question.trim() || image) && answer.trim();
 
   const [copiedBoth, setCopiedBoth] = useState(false);
   const copyBoth = async () => {
@@ -942,11 +946,11 @@ function QAForm({ initial, title, submitLabel, onSubmit, onCancel, keepOpen, sho
           </button>
         </div>
       )}
-      {question.trim() && (
+      {(question.trim() || image) && (
         <div className="copy-row">
           <button className={'btn sm' + (image ? ' primary' : '')} onClick={copyBoth}>
             {copiedBoth ? <Check size={15} /> : <Copy size={15} />}
-            {copiedBoth ? 'Kopyalandı' : image ? 'Soruyu ve görseli kopyala' : 'Soruyu kopyala'}
+            {copiedBoth ? 'Kopyalandı' : image ? (question.trim() ? 'Soruyu ve görseli kopyala' : 'Görseli kopyala') : 'Soruyu kopyala'}
           </button>
           <span className="hint">{image ? 'Yapay zekâya tek seferde Ctrl+V ile yapıştır, gelen cevabı aşağıya yapıştır.' : ''}</span>
         </div>

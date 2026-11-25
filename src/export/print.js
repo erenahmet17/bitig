@@ -1,17 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import Markdown from '../Markdown.jsx';
+import { blobToDataURL } from '../utils.js';
 import { formatDate } from './collect.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-
-const blobToDataURL = (blob) =>
-  new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(blob);
-  });
 
 const PRINT_CSS = `
   @page { size: A4; margin: 16mm 15mm 18mm; }

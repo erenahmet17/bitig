@@ -103,8 +103,9 @@ export default function SearchModal({ onClose, onGo }) {
     }
     for (const qa of data.qas) {
       if (!byId.has(qa.sectionId)) continue;
+      const title = qa.question || '(Görüntülü soru)';
       const body = plain(qa.answer || '');
-      items.push({ kind: 'qa', id: qa.id, sectionId: qa.sectionId, page: qa.page, title: qa.question, nTitle: norm(qa.question), body, nBody: norm(body), path: pathOf(qa.sectionId) });
+      items.push({ kind: 'qa', id: qa.id, sectionId: qa.sectionId, page: qa.page, title, nTitle: norm(title), body, nBody: norm(body), path: pathOf(qa.sectionId) });
     }
     for (const a of data.notes) {
       const sid = pdfSection.get(a.pdfId);

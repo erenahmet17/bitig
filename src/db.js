@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { blobToDataURL } from './utils.js';
 
 // Veriler tarayıcının IndexedDB'sinde tutulur.
 // sections:    dersler (parentId = '') ve onların altındaki bölümler (iç içe)
@@ -244,14 +245,6 @@ export function deleteAnnotation(id) {
 }
 
 // ---------------- Yedekleme ----------------
-const blobToDataURL = (blob) =>
-  new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(blob);
-  });
-
 export async function exportAll({ includePdfs = true } = {}) {
   const pdfs = [];
   for (const p of await db.pdfs.toArray()) {

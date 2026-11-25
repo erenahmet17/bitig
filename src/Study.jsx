@@ -1,15 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { X, GraduationCap, Shuffle, RotateCcw, CircleCheck, Eye, Trophy, Repeat, FileText } from 'lucide-react';
 import { db, setQAStatus } from './db.js';
 import Markdown from './Markdown.jsx';
-
-function useObjectURL(blob) {
-  const url = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
-  useEffect(() => () => url && URL.revokeObjectURL(url), [url]);
-  return url;
-}
+import { useObjectURL } from './utils.js';
 
 function shuffle(list) {
   const a = [...list];
@@ -70,6 +65,10 @@ export default function StudyMode({ section, tree, onClose }) {
     return m;
   }, [all]);
 
+  // Kayıtlı filtrede bu bölüm için hiç soru yoksa otomatik "Tümü"ne düş
+  const validFilter = FILTERS.some((f) => f.id === filter) ? filter : 'all';
+  const activeFilter = all && !counts[validFilter] && counts.all > 0 ? 'all' : validFilter;
+
   const start = (list) => {
     setDeck(mixed ? shuffle(list) : list);
     setIdx(0);
@@ -80,13 +79,16 @@ export default function StudyMode({ section, tree, onClose }) {
   const done = deck && idx >= deck.length;
   const current = deck && !done ? deck[idx] : null;
 
-  const answer = async (ok) => {
-    if (!current) return;
-    setResults((r) => [...r, { qa: current, ok }]);
-    setIdx((i) => i + 1);
-    setRevealed(false);
-    await setQAStatus(current.id, ok ? 'known' : 'review');
-  };
+  const answer = useCallback(
+    async (ok) => {
+      if (!current) return;
+      setResults((r) => [...r, { qa: current, ok }]);
+      setIdx((i) => i + 1);
+      setRevealed(false);
+      await setQAStatus(current.id, ok ? 'known' : 'review');
+    },
+    [current]
+  );
 
   // Klavye: Boşluk/Enter cevabı gösterir; 1/← bilemedim, 2/→ bildim; Esc kapatır
   useEffect(() => {
@@ -110,7 +112,7 @@ export default function StudyMode({ section, tree, onClose }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  });
+  }, [current, revealed, answer, onClose]);
 
   // Arka plandaki sayfa kaymasın
   useEffect(() => {
@@ -144,11 +146,11 @@ export default function StudyMode({ section, tree, onClose }) {
         {!deck && all && (
           <Setup
             counts={counts}
-            filter={filter}
+            filter={activeFilter}
             setFilter={setFilter}
             mixed={mixed}
             setMixed={setMixed}
-            onStart={() => start(all.filter(FILTERS.find((f) => f.id === filter).test))}
+            onStart={() => start(all.filter(FILTERS.find((f) => f.id === activeFilter).test))}
           />
         )}
         {current && <Card key={current.id + ':' + idx} qa={current} revealed={revealed} onReveal={() => setRevealed(true)} onAnswer={answer} />}
@@ -216,7 +218,7 @@ function Card({ qa, revealed, onReveal, onAnswer }) {
         </div>
       )}
       <div className="study-card">
-        <div className="study-q">{qa.question}</div>
+        {qa.question && <div className="study-q">{qa.question}</div>}
         {imgUrl && <img className="study-img" src={imgUrl} alt="Soruya eklenen görüntü" onClick={() => setZoomed(true)} />}
         {revealed ? (
           <div className="study-a">

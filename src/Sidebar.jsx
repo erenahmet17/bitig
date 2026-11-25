@@ -24,6 +24,7 @@ import { db, ROOT, addSection, renameSection, deleteSection, collectSubtree, mov
 import InlineInput from './InlineInput.jsx';
 import { useInstallPrompt } from './install.js';
 import { ask, confirmDanger, toast } from './ui.jsx';
+import { evictPdf } from './pdf/pdfjs.js';
 
 export async function confirmDeleteSection(section) {
   const { ids, qaCount, pdfCount } = await collectSubtree(section.id);
@@ -35,7 +36,9 @@ export async function confirmDeleteSection(section) {
     message: (details ? `İçindeki ${details} da silinecek. ` : '') + 'Bu işlem geri alınamaz.',
   });
   if (ok) {
+    const pdfIds = pdfCount ? await db.pdfs.where('sectionId').anyOf(ids).primaryKeys() : [];
     await deleteSection(section.id);
+    pdfIds.forEach(evictPdf);
     toast('Silindi');
   }
 }
